@@ -2,6 +2,8 @@
 
 把写内容高频用到的 **16 个工具**打包成本地 dashboard，一个浏览器标签全搞定。**全本地、零后端、离线可用**（R2 图床、热榜选题、AI 选题需联网）。
 
+> 🌐 **主站 / 在线体验：[toolscomb.com](https://toolscomb.com)**　·　教程：`https://toolscomb.com/article/qingzuo`
+
 ## 运行
 
 ```bash
