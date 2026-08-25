@@ -1,0 +1,22 @@
+# secrets & local-only data — never commit
+config.secret.json
+data/
+*.log
+*.pid
+
+# js deps
+node_modules/
+
+# py
+__pycache__/
+*.pyc
+
+# env
+.env
+.env.*
+
+# mac
+.DS_Store
+
+# local scratch
+/tmp/

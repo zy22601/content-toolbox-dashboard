@@ -1,0 +1,9 @@
+name = "content-toolbox-r2"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+workers_dev = true
+
+# R2 binding — created on first deploy.
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "content-toolbox-images"

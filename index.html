@@ -1,0 +1,1856 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>内容工作台 · Content Toolbox</title>
+<style>
+/* ============ Design tokens ============ */
+:root{
+  --bg: #f6f7f9; --panel: #ffffff; --panel-2: #fbfbfc;
+  --ink: #1c2230; --ink-2: #4a5464; --ink-3: #8a94a6;
+  --accent: #0d9488; --accent-2: #0f766e; --accent-soft: #e7f5f3;
+  --line: #e7eaf0; --line-2: #eef1f5;
+  --warn: #b45309; --warn-soft:#fef3c7; --danger:#b91c1c; --danger-soft:#fee2e2;
+  --ok:#0f766e; --ok-soft:#d1fae5;
+  --shadow: 0 1px 2px rgba(16,24,40,.04), 0 8px 24px rgba(16,24,40,.06);
+  --shadow-lg: 0 12px 40px rgba(16,24,40,.12);
+  --r: 12px; --r-sm: 8px;
+  --mono: "SF Mono","JetBrains Mono","Menlo",Consolas,monospace;
+  --ui: -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --serif: "Songti SC","Noto Serif SC",Georgia,serif;
+}
+[data-theme="dark"]{
+  --bg: #0f1217; --panel: #171b22; --panel-2: #1c212a;
+  --ink: #e8ebf0; --ink-2: #aab3c0; --ink-3: #6b7686;
+  --accent: #2dd4bf; --accent-2: #5eead4; --accent-soft: #122c2a;
+  --line: #262c36; --line-2: #20252e;
+  --warn: #f59e0b; --warn-soft:#3a2b0a; --danger:#f87171; --danger-soft:#3a1414;
+  --ok:#34d399; --ok-soft:#0c2e22;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.45);
+  --shadow-lg: 0 16px 48px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font-family:var(--ui);background:var(--bg);color:var(--ink);
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+button{font-family:inherit}
+::selection{background:var(--accent);color:#fff}
+
+/* ============ Layout ============ */
+.tab{display:none}
+.tab.active{display:block}
+#app{display:grid;grid-template-columns:248px 1fr;min-height:100vh}
+/* Sidebar */
+#side{background:var(--panel);border-right:1px solid var(--line);padding:20px 14px;
+  display:flex;flex-direction:column;gap:6px;position:sticky;top:0;height:100vh}
+.brand{display:flex;align-items:center;gap:10px;padding:6px 10px 18px}
+.brand .dot{width:30px;height:30px;border-radius:9px;background:var(--accent);
+  display:grid;place-items:center;color:#fff;font-weight:800;font-size:15px}
+.brand b{font-size:15px;letter-spacing:.2px}
+.brand small{display:block;color:var(--ink-3);font-size:11px;font-weight:500;margin-top:1px}
+.nav-label{font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.12em;
+  padding:12px 10px 6px}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav button{display:flex;align-items:center;gap:11px;width:100%;padding:9px 11px;border:0;
+  background:none;border-radius:9px;color:var(--ink-2);font-size:13.5px;cursor:pointer;
+  text-align:left;transition:background .12s,color .12s;position:relative}
+.nav button:hover{background:var(--panel-2);color:var(--ink)}
+.nav button.active{background:var(--accent-soft);color:var(--accent-2)}
+.nav button.active::before{content:"";position:absolute;left:-14px;top:50%;transform:translateY(-50%);
+  width:3px;height:18px;border-radius:2px;background:var(--accent)}
+.nav button .ico{width:18px;text-align:center;font-size:15px;opacity:.9}
+.nav button .k{margin-left:auto;font-size:10.5px;color:var(--ink-3);border:1px solid var(--line);
+  padding:1px 6px;border-radius:5px;font-family:var(--mono)}
+.side-foot{margin-top:auto;padding:10px;font-size:11px;color:var(--ink-3)}
+.side-foot .row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px}
+.switch{cursor:pointer;font-size:15px;background:none;border:0;color:var(--ink-3)}
+.switch:hover{color:var(--ink)}
+
+/* Main */
+#main{padding:28px 34px 60px;min-width:0}
+.tool-head{max-width:1080px;margin-bottom:20px}
+.tool-head .crumb{font-size:12px;color:var(--ink-3);margin-bottom:6px}
+.tool-head h1{font-size:24px;margin:0;font-weight:750;letter-spacing:-.01em}
+.tool-head p{color:var(--ink-2);font-size:13.5px;margin:6px 0 0;max-width:760px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--shadow);margin-bottom:18px;max-width:1080px}
+.panel .hd{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:13px 18px;border-bottom:1px solid var(--line-2)}
+.panel .hd h2{font-size:14px;margin:0;font-weight:650}
+.panel .hd .hint{font-size:12px;color:var(--ink-3)}
+.panel .bd{padding:18px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.grid-2col{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:980px){#app{grid-template-columns:1fr}#side{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center}#side .nav{flex-direction:row;flex-wrap:wrap}.side-foot{display:none}.grid-2col{grid-template-columns:1fr}#main{padding:18px}}
+.grid-2col.lg{grid-template-columns:1fr 1.1fr}
+
+/* Inputs */
+textarea,input[type=text],input[type=password],input[type=number],select{
+  width:100%;border:1px solid var(--line);background:var(--panel-2);color:var(--ink);
+  border-radius:var(--r-sm);padding:10px 12px;font-size:13.5px;font-family:inherit;
+  transition:border-color .12s,box-shadow .12s}
+textarea{resize:vertical;min-height:200px;font-family:var(--mono);line-height:1.6}
+input:focus,textarea:focus,select:focus{outline:0;border-color:var(--accent);
+  box-shadow:0 0 0 3px var(--accent-soft)}
+label.f{display:block;font-size:12.5px;color:var(--ink-2);margin:0 0 6px;font-weight:550}
+.field{margin-bottom:14px}
+.field .sub{font-size:11.5px;color:var(--ink-3);margin-top:4px}
+hint{display:block;font-size:11.5px;color:var(--ink-3);margin-top:4px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.row.grow>*{flex:1}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:7px;border:1px solid transparent;
+  border-radius:var(--r-sm);padding:9px 15px;font-size:13.5px;font-weight:600;cursor:pointer;
+  transition:transform .06s,box-shadow .12s,background .12s,opacity .12s;user-select:none}
+.btn:active{transform:translateY(1px)}
+.btn-pri{background:var(--accent);color:#fff}
+.btn-pri:hover{background:var(--accent-2)}
+.btn-ghost{background:transparent;border-color:var(--line);color:var(--ink-2)}
+.btn-ghost:hover{border-color:var(--ink-3);color:var(--ink)}
+.btn-soft{background:var(--accent-soft);color:var(--accent-2)}
+.btn-soft:hover{background:var(--accent-soft);filter:brightness(.96)}
+.btn-sm{padding:6px 11px;font-size:12.5px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+
+/* Dropzone */
+.drop{border:1.6px dashed var(--line);border-radius:var(--r);padding:34px;text-align:center;
+  color:var(--ink-3);font-size:14px;cursor:pointer;transition:border-color .12s,background .12s}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop b{color:var(--ink-2)}
+.drop .ico{font-size:26px;margin-bottom:8px;display:block}
+
+/* Result cards */
+.result{background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r-sm);
+  padding:12px 14px;margin-top:14px}
+.result .label{font-size:11.5px;color:var(--ink-3);margin-bottom:4px}
+.codebox{background:var(--bg);border:1px solid var(--line-2);border-radius:7px;
+  padding:9px 12px;font-family:var(--mono);font-size:12.5px;word-break:break-all;
+  color:var(--ink-2);margin-top:4px}
+.thumb{max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--line);display:block}
+.copied{color:var(--ok);font-size:12px}
+
+/* ============ Markdown preview / WeChat body ============ */
+.md{font-family:var(--serif);font-size:15.5px;line-height:1.85;color:var(--ink);
+  padding:6px 4px;word-break:break-word}
+.md h1,.md h2,.md h3,.md h4{font-family:var(--ui);margin:1.4em 0 .7em;line-height:1.35;
+  letter-spacing:-.01em;font-weight:700}
+.md h1{font-size:1.55em}.md h2{font-size:1.35em}.md h3{font-size:1.15em}
+.md p{margin:.85em 0}
+.md a{color:var(--accent-2);text-decoration:none;border-bottom:1px dashed var(--accent-2)}
+.md img{max-width:100%;border-radius:6px;margin:.6em 0}
+.md blockquote{margin:1em 0;padding:.3em 1em;border-left:3px solid var(--accent);
+  background:var(--accent-soft);border-radius:0 6px 6px 0;color:var(--ink-2)}
+.md code{font-family:var(--mono);background:var(--accent-soft);color:var(--accent-2);
+  padding:.15em .4em;border-radius:4px;font-size:.9em}
+.md pre{background:var(--bg);border:1px solid var(--line-2);border-radius:8px;padding:13px 15px;
+  overflow-x:auto;margin:1em 0}
+.md pre code{background:none;color:var(--ink);padding:0;font-size:13px;line-height:1.6}
+.md ul,.md ol{padding-left:1.5em;margin:.85em 0}
+.md li{margin:.4em 0}
+.md hr{border:0;border-top:1px solid var(--line);margin:1.6em 0}
+.md table{border-collapse:collapse;width:100%;margin:1em 0;font-size:14px;font-family:var(--ui)}
+.md th,.md td{border:1px solid var(--line);padding:7px 11px}
+.md th{background:var(--panel-2)}
+.scrollbox{overflow:auto;max-height:520px;border:1px solid var(--line);border-radius:var(--r-sm);
+  padding:6px 22px;background:var(--panel-2)}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:16px;min-height:420px}
+@media(max-width:860px){.split{grid-template-columns:1fr}}
+
+/* ============ Card (xiaohongshu) ============ */
+.card-stage{margin-top:16px;overflow:auto;padding-bottom:8px}
+.card-scroll{width:min(372px,100%)}
+/* ============ Toast ============ */
+#toast{position:fixed;bottom:26px;right:26px;z-index:999;display:flex;flex-direction:column;gap:8px}
+.tst{background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:10px;font-size:13.5px;
+  box-shadow:var(--shadow-lg);animation:sli .18s ease;display:flex;gap:9px;align-items:center;max-width:340px}
+.tst.ok{background:var(--ok)}.tst.err{background:var(--danger)}
+@keyframes sli{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
+.badge{font-size:11px;padding:2px 8px;border-radius:20px;background:var(--accent-soft);color:var(--accent-2)}
+.warnbox{background:var(--warn-soft);color:var(--warn);border-radius:var(--r-sm);padding:11px 14px;
+  font-size:12.5px;margin:10px 0;line-height:1.6}
+.hidden{display:none!important}
+.muted{color:var(--ink-3)}
+.mono{font-family:var(--mono)}
+.mt6{margin-top:6px}.mt10{margin-top:10px}.mt14{margin-top:14px}.mb10{margin-bottom:10px}
+.tiny{font-size:11.5px;color:var(--ink-3)}
+.divider{height:1px;background:var(--line-2);margin:16px 0}
+.stat{display:inline-flex;gap:16px;font-size:12.5px;color:var(--ink-2)}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ===================== SIDEBAR ===================== -->
+  <aside id="side">
+    <div class="brand">
+      <div class="dot">工</div>
+      <div><b>内容工作台</b><small>Content Toolbox</small></div>
+    </div>
+    <div class="nav-label">工具</div>
+    <nav class="nav">
+      <button data-tab="r2" class="active"><span class="ico">◫</span> R2 图床 <span class="k">1</span></button>
+      <button data-tab="mdpng"><span class="ico">▤</span> Markdown→PNG <span class="k">2</span></button>
+      <button data-tab="card"><span class="ico">▦</span> 图文卡片 <span class="k">3</span></button>
+      <button data-tab="emoji"><span class="ico">☺</span> 去除 Emoji <span class="k">4</span></button>
+      <button data-tab="wechat"><span class="ico">✎</span> 公众号排版 <span class="k">5</span></button>
+      <button data-tab="cover"><span class="ico">▣</span> 封面生成 <span class="k">6</span></button>
+      <button data-tab="count"><span class="ico">☰</span> 字数统计 <span class="k">7</span></button>
+      <button data-tab="qrcode"><span class="ico">◈</span> 二维码生成 <span class="k">8</span></button>
+    </nav>
+    <div class="nav-label">图片</div>
+    <nav class="nav">
+      <button data-tab="grid9"><span class="ico">▩</span> 九宫格切图 <span class="k">9</span></button>
+      <button data-tab="imgcompress"><span class="ico">◎</span> 图片压缩</button>
+      <button data-tab="imgwatermark"><span class="ico">❖</span> 图片加水印</button>
+    </nav>
+    <div class="nav-label">选题·发布</div>
+    <nav class="nav">
+      <button data-tab="hotlist"><span class="ico">▲</span> 热榜选题</button>
+      <button data-tab="publish"><span class="ico">➤</span> 一键分发</button>
+      <button data-tab="aiweek"><span class="ico">✦</span> AI 周报</button>
+      <button data-tab="banword"><span class="ico">⛔</span> 违禁词检测</button>
+    </nav>
+    <div class="nav-label">知识库</div>
+    <nav class="nav">
+      <button data-tab="kb"><span class="ico">🕮</span> 知识库</button>
+    </nav>
+    <div class="nav-label">系统</div>
+    <nav class="nav">
+      <button data-tab="settings"><span class="ico">⚙</span> 设置</button>
+    </nav>
+    <div class="side-foot">
+      <div class="row"><span>主题</span><button class="switch" id="themeToggle" title="切换深浅色">🌙</button></div>
+      <div class="row"><span>运行状态</span><span id="netDot" class="badge">localhost</span></div>
+    </div>
+  </aside>
+
+  <!-- ===================== MAIN ===================== -->
+  <main id="main">
+
+    <!-- ========== R2 图床 ========== -->
+    <section id="tab-r2" class="tab active">
+      <div class="tool-head">
+        <div class="crumb">工具 01</div>
+        <h1>R2 图床</h1>
+        <p>拖图 / 粘贴 / 选择图片，传到你的 Cloudflare R2（Worker 图床），返回永久直链、Markdown 和 HTML 片段。密钥只存 Cloudflare 云端，本机浏览器不接触密钥。</p>
+      </div>
+
+      <div class="panel" id="r2Setup">
+        <div class="hd"><h2>图床配置</h2><span class="hint" id="r2cfgState">未配置</span></div>
+        <div class="bd">
+          <div class="row mb10">
+            <span class="tiny">托管方式</span>
+            <label class="f mb10" style="margin:0"><input type="radio" name="r2mode" value="worker" id="r2mWorker" checked> Cloudflare Worker（免 CORS · 仅经你的域名出图 · 密钥只存云端）</label>
+          </div>
+          <div id="r2WorkerFields">
+            <div class="grid2">
+              <div class="field"><label class="f">Worker 地址</label>
+                <input id="r2WorkerUrl" type="text" placeholder="https://cdn.toolscomb.com">
+                <hint>填你的 Worker 根地址（自定义域名，如 cdn.toolscomb.com），页面自动拼 /upload、/view/&lt;key&gt;</hint></div>
+              <div class="field"><label class="f">API Key（必填，与 Worker 的 API_KEY 一致）</label>
+                <input id="r2ApiKey" type="password" placeholder="填 Worker 的 API_KEY">
+                <hint>Worker 端 <code>npx wrangler secret put API_KEY</code> 设置后，这里填同一个值；密钥只存 Cloudflare 云端</hint></div>
+            </div>
+            <div class="tiny">图片上传后直链形如 <code>&lt;worker&gt;/view/&lt;key&gt;</code>。免 CORS、免本机密钥；上传/删除需上面的 API Key（无 key 无法写入，链接仍公开可访问）。</div>
+          </div>
+          <div class="row">
+            <button class="btn btn-pri" id="r2Save">保存配置</button>
+            <span class="tiny" id="r2testOut"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="hd"><h2>上传图片</h2><span class="hint" id="r2upstate"></span></div>
+        <div class="bd">
+          <div class="drop" id="r2drop">
+            <span class="ico">⤒</span>
+            <b>拖拽 / 点击选择 / 直接粘贴</b> 图片到此处
+            <div class="tiny mt6">支持 PNG · JPG · GIF · WebP · SVG</div>
+            <input type="file" id="r2file" accept="image/*" class="hidden">
+          </div>
+          <div class="field mt14"><label class="f">文件名前缀(可空，自动加时间戳)</label>
+            <input id="r2prefix" type="text" placeholder="blog/2026-08"></div>
+          <div id="r2results"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== Markdown → PNG ========== -->
+    <section id="tab-mdpng" class="tab">
+      <div class="tool-head">
+        <div class="crumb">工具 02</div>
+        <h1>Markdown → PNG</h1>
+        <p>把 Markdown 渲染成精美的长图，一键导出高清 PNG。适合把技术文档 / 教程 / 文案做成图片分享。</p>
+      </div>
+      <div class="panel">
+        <div class="hd"><h2>编辑与预览</h2><span class="hint">左输入 · 右实时预览</span></div>
+        <div class="bd">
+          <div class="split">
+            <div><label class="f">Markdown 内容</label>
+              <textarea id="mdSrc" spellcheck="false" placeholder="# 标题&#10;&#10;写点内容…"></textarea>
+              <div class="row mt6">
+                <label class="f mb10">样式
+                  <select id="mdTheme"><option value="light">浅色</option><option value="dark">深色</option><option value="paper">米纸</option></select>
+                </label>
+                <label class="f mb10">宽度
+                  <select id="mdWidth"><option>720</option><option selected>900</option><option>1100</option></select></label>
+                <label class="f mb10">内边距
+                  <select id="mdPad"><option>0</option><option>24</option><option selected>40</option><option>64</option></select></label>
+              </div>
+            </div>
+            <div><label class="f">预览</label>
+              <div class="scrollbox" id="mdPreviewWrap" style="background:#fff">
+                <div class="md" id="mdPreview"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="hd"><h2>导出</h2><span class="hint">html2canvas 本地渲染，不上传</span></div>
+        <div class="bd">
+          <div class="row">
+            <button class="btn btn-pri" id="mdExport">下载高清 PNG</button>
+            <button class="btn btn-ghost" id="mdCopyImg">复制图片</button>
+            <span class="tiny" id="mdOut"></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 图文卡片 ========== -->
+    <section id="tab-card" class="tab">
+      <div class="tool-head">
+        <div class="crumb">工具 03</div>
+        <h1>图文卡片</h1>
+        <p>手写文字卡片，<code>==关键词==</code> 高亮、独立一行 <code>---</code> 分页成多张，3:4 竖版适配小红书。</p>
+      </div>
+      <div class="panel">
+        <div class="hd"><h2>卡片内容</h2><span class="hint">3:4 · 1242×1656 高清</span></div>
+        <div class="bd">
+          <textarea id="cardSrc" spellcheck="false" style="min-height:180px" placeholder="每一行是一段文字&#10;&#10;==高亮的重点文字==&#10;&#10;--- (独立一行分页)"></textarea>
+          <div class="row mt10">
+            <label class="f mb10">背景
+              <select id="cardBg"><option value="#0f172a">深夜蓝</option><option value="#fff7ed">暖白</option><option value="#fdf2f8">淡粉</option><option value="#e7f5f3">薄荷</option><option value="#fef3c7">米黄</option><option value="#0d9488">青绿</option></select></label>
+            <label class="f mb10">文字
+              <select id="cardTx"><option value="#f8fafc">白</option><option value="#1c2230">深灰</option><option value="#fff7ed">暖白</option><option value="#0f766e">青</option><option value="#b45309">琥珀</option></select></label>
+            <label class="f mb10">字号
+              <select id="cardSize"><option value="44">小</option><option value="54" selected>中</option><option value="66">大</option></select></label>
+            <label class="f mb10">对齐
+              <select id="cardAlign"><option value="left">左对齐</option><option value="center" selected>居中</option></select></label>
+          </div>
+          <div class="row mt10">
+            <button class="btn btn-pri" id="cardRender">生成并预览</button>
+            <button class="btn btn-pri" id="cardExport">导出全部 PNG</button>
+            <span class="tiny" id="cardOut"></span>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="hd"><h2>预览(缩放显示)</h2><span class="hint" id="cardPageInfo"></span></div>
+        <div class="bd">
+          <div class="card-stage" id="cardWrap"><div id="cardAnchor"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 去除 Emoji ========== -->
+    <section id="tab-emoji" class="tab">
+      <div class="tool-head">
+        <div class="crumb">工具 04</div>
+        <h1>去除 Emoji</h1>
+        <p>粘贴一段文字，一键去掉所有表情 / 符号，保留纯文本，方便发布到严格平台。</p>
+      </div>
+      <div class="panel">
+        <div class="hd"><h2>文本</h2><span class="hint">粘贴 → 清洗 → 复制</span></div>
+        <div class="bd">
+          <div class="grid2">
+            <div>
+              <label class="f">原始文字</label>
+              <textarea id="emIn" spellcheck="false" placeholder="粘贴带 emoji 的文字…"></textarea>
+            </div>
+            <div>
+              <label class="f">清洗结果</label>
+              <textarea id="emOut" spellcheck="false" readonly placeholder="结果会显示在这里"></textarea>
+            </div>
+          </div>
+          <div class="row mt10">
+            <label class="f mb10"><input type="checkbox" id="emSym" checked> 同时去除符号 / 标点占位</label>
+            <label class="f mb10"><input type="checkbox" id="emSpace"> 去除后合并多余空格</label>
+          </div>
+          <div class="row mt10">
+            <button class="btn btn-pri" id="emGo">清洗</button>
+            <button class="btn btn-ghost" id="emCopy">复制结果</button>
+            <span class="tiny" id="emOut2"></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 公众号排版 ========== -->
+    <section id="tab-wechat" class="tab">
+      <div class="tool-head">
+        <div class="crumb">工具 05</div>
+        <h1>公众号排版</h1>
+        <p>左边写 Markdown，右边实时生成公众号样式。选主题、调主色，一键复制富文本，粘进公众号编辑器即保持排版。</p>
+      </div>
+      <div class="panel">
+        <div class="hd"><h2>编辑</h2><span class="hint">markdown-it 本地渲染</span></div>
+        <div class="bd">
+          <div class="split" style="min-height:430px">
+            <div>
+              <label class="f">Markdown</label>
+              <textarea id="wSrc" spellcheck="false" style="min-height:390px" placeholder="# 标题&#10;&#10;正文…"></textarea>
+            </div>
+            <div>
+              <label class="f">公众号预览</label>
+              <div class="scrollbox" id="wWrap" style="max-height:420px"><div class="md" id="wPrev"></div></div>
+            </div>
+          </div>
+          <div class="row mt10">
+            <label class="f mb10">主题
+              <select id="wTheme"><option value="paper">素纸</option><option value="ink">墨韵</option><option value="mint">薄荷</option><option value="rose">绯红</option><option value="navy">湛蓝</option><option value="night">暗夜</option></select></label>
+            <label class="f mb10">主色 <input type="color" id="wAccent" value="#0f766e" style="width:44px;height:32px;padding:2px;border:1px solid var(--line);border-radius:6px"></label>
+            <button class="btn btn-pri" id="wCopy">复制富文本到公众号</button>
+            <button class="btn btn-ghost" id="wCopyMd">复制 Markdown</button>
+            <span class="tiny" id="wOut"></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 封面生成 ========== -->
+    <section id="tab-cover" class="tab">
+      <div class="tool-head">
+        <div class="crumb">工具 06</div>
+        <h1>封面生成</h1>
+        <p>输入标题/副标题与落款，套用现成配色生成内容封面。支持 16:9 视频横幅、3:4 小红书竖版、1:1 方图，一键导出高清 PNG。</p>
+      </div>
+      <div class="panel">
+        <div class="hd"><h2>封面内容</h2><span class="hint">左编辑 · 右实时预览</span></div>
+        <div class="bd">
+          <div class="split">
+            <div>
+              <div class="field"><label class="f">标签 / 角标（可选）</label>
+                <input id="cvBadge" type="text" placeholder="如：效率工具 / 干货分享">
+                <hint>显示在封面顶部，适合做栏目、系列号</hint></div>
+              <div class="field"><label class="f">主标题 <span style="color:var(--danger)">*</span></label>
+                <input id="cvTitle" type="text" placeholder="输入主标题"></div>
+              <div class="field"><label class="f">副标题（可选）</label>
+                <input id="cvSub" type="text" placeholder="输入副标题"></div>
+              <div class="field"><label class="f">落款 / 作者（可选）</label>
+                <input id="cvFoot" type="text" placeholder="如：效率工具情报">
+                <hint>显示在封面左下角</hint></div>
+              <div class="row mt10" style="flex-wrap:wrap">
+                <label class="f mb10">背景
+                  <select id="cvTheme">
+                    <option value="mint">薄荷（品牌）</option>
+                    <option value="ink">墨韵</option>
+                    <option value="navy">湛蓝</option>
+                    <option value="rose">绯红</option>
+                    <option value="sunset">日落渐变</option>
+                    <option value="forest">森林绿</option>
+                    <option value="paper">米纸</option>
+                  </select></label>
+                <label class="f mb10">比例
+                  <select id="cvRatio">
+                    <option value="169">16:9 横版</option>
+                    <option value="34">3:4 竖版</option>
+                    <option value="11">1:1 方图</option>
+                  </select></label>
+                <label class="f mb10">标题字号
+                  <select id="cvSize"><option value="72">大</option><option value="60" selected>中</option><option value="48">小</option></select></label>
+              </div>
+              <div class="row mt10">
+                <button class="btn btn-pri" id="cvExport">下载高清 PNG</button>
+                <button class="btn btn-ghost" id="cvCopy">复制图片</button>
+                <span class="tiny" id="cvOut"></span>
+              </div>
+            </div>
+            <div>
+              <label class="f">预览</label>
+              <div class="scrollbox" id="cvStage" style="display:grid;place-items:center;padding:18px">
+                <div id="cvWrap"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 字数统计 ========== -->
+    <section id="tab-count" class="tab">
+      <style>
+        #ctStats{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:10px;margin:14px 0}
+        #ctStats .statbox{background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 14px}
+        #ctStats .statbox b{display:block;font-size:22px;font-weight:700;color:var(--accent-2);font-family:var(--mono)}
+        #ctStats .statbox span{font-size:11.5px;color:var(--ink-3)}
+      </style>
+      <div class="tool-head">
+        <div class="crumb">工具 07</div>
+        <h1>字数统计</h1>
+        <p>实时统计中英文字数、标点、行数与段落，估算阅读时长。适合检查公众号 / 小红书 / 投稿的篇幅。</p>
+      </div>
+      <div class="panel">
+        <div class="hd"><h2>文本</h2><span class="hint">输入即统计</span></div>
+        <div class="bd">
+          <textarea id="ctSrc" spellcheck="false" style="min-height:180px" placeholder="粘贴或输入要统计的文字…"></textarea>
+          <div id="ctStats"></div>
+          <div class="row">
+            <button class="btn btn-ghost" id="ctCopy">复制统计结果</button>
+            <span class="tiny" id="ctOut"></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 二维码生成 ========== -->
+    <section id="tab-qrcode" class="tab">
+      <style>
+        .minicolor{width:44px;height:30px;padding:2px;border:1px solid var(--line);border-radius:6px;background:var(--panel-2);cursor:pointer;vertical-align:middle}
+        #g9Grid{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+        #g9Grid .tile{border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden;background:#fff}
+        #g9Grid .tile img{display:block;max-width:180px}
+        #g9Grid .tile div{font-size:11px;color:var(--ink-3);padding:3px 6px;text-align:center;background:var(--panel-2)}
+      </style>
+      <div class="tool-head">
+        <div class="crumb">工具 08</div>
+        <h1>二维码生成</h1>
+        <p>输入链接 / 文本，生成可下载的二维码，导流到公众号、社群、小程序、商品页。纯本地生成，不上传。</p>
+      </div>
+      <div class="panel">
+        <div class="hd"><h2>内容与样式</h2><span class="hint">左编辑 · 右实时预览</span></div>
+        <div class="bd">
+          <div class="split">
+            <div>
+              <div class="field"><label class="f">内容（链接 / 文本）</label>
+                <textarea id="qrText" spellcheck="false" placeholder="https://example.com 或任意文本"></textarea></div>
+              <div class="row mt10" style="flex-wrap:wrap">
+                <label class="f mb10">容错
+                  <select id="qrEc"><option value="L">L (7%)</option><option value="M" selected>M (15%)</option><option value="Q">Q (25%)</option><option value="H">H (30%)</option></select></label>
+                <label class="f mb10">尺寸
+                  <select id="qrCell"><option value="4">小</option><option value="6" selected>中</option><option value="10">大</option><option value="14">超大</option></select></label>
+                <label class="f mb10">前景 <input type="color" id="qrFg" value="#0f766e" class="minicolor"></label>
+                <label class="f mb10">背景 <input type="color" id="qrBg" value="#ffffff" class="minicolor"></label>
+              </div>
+              <div class="tiny mt6">容错越高，中心可容纳 Logo / 图案越多（生成后建议留白）。</div>
+              <div class="row mt10">
+                <button class="btn btn-pri" id="qrDownload">下载 PNG</button>
+                <button class="btn btn-ghost" id="qrCopy">复制图片</button>
+                <span class="tiny" id="qrOut"></span>
+              </div>
+            </div>
+            <div>
+              <label class="f">预览</label>
+              <div class="scrollbox" id="qrStage" style="display:grid;place-items:center;padding:18px;background:repeating-conic-gradient(#f0f0f0 0 25%,transparent 0 50%) 0 0/16px 16px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 九宫格切图 ========== -->
+    <section id="tab-grid9" class="tab">
+      <div class="tool-head">
+        <div class="crumb">工具 09</div>
+        <h1>九宫格切图</h1>
+        <p>一张图切成多格，发小红书 / 朋友圈多图必备。可选等比居中裁成正方形，支持 2×3、3×4 等，可打包 ZIP 一次下载。</p>
+      </div>
+      <div class="panel">
+        <div class="hd"><h2>选择图片</h2><span class="hint">自动切片</span></div>
+        <div class="bd">
+          <div class="drop" id="g9drop"><span class="ico">⤒</span><b>拖拽 / 点击选择</b> 图片
+            <div class="tiny mt6">建议正方形或先「裁正方形」</div>
+            <input type="file" id="g9file" accept="image/*" class="hidden"></div>
+          <div class="row mt10" style="flex-wrap:wrap">
+            <label class="f mb10">列数
+              <select id="g9Cols"><option>2</option><option selected>3</option><option>4</option></select></label>
+            <label class="f mb10">行数
+              <select id="g9Rows"><option>2</option><option selected>3</option><option>4</option><option>5</option></select></label>
+            <label class="f mb10">间隔(px)
+              <select id="g9Gap"><option>0</option><option selected>8</option><option>16</option></select></label>
+            <label class="f mb10">裁正方形
+              <select id="g9Square"><option value="yes" selected>是(居中裁)</option><option value="no">否(保持原比例)</option></select></label>
+            <label class="f mb10">格式
+              <select id="g9Fmt"><option value="image/jpeg">JPG</option><option value="image/webp">WebP</option><option value="image/png">PNG</option></select></label>
+          </div>
+          <div class="row mt10">
+            <button class="btn btn-pri" id="g9Go">生成</button>
+            <button class="btn btn-ghost" id="g9Zip">下载全部 ZIP</button>
+            <span class="tiny" id="g9Out"></span>
+          </div>
+          <div id="g9Grid"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 图片压缩 / 格式转换 ========== -->
+    <section id="tab-imgcompress" class="tab">
+      <div class="tool-head">
+        <div class="crumb">工具 10</div>
+        <h1>图片压缩 / 格式转换</h1>
+        <p>压到平台大小上限，转 WebP / JPEG 省 R2 流量。选格式、调质量、限制最大宽高，看压缩前后对比，纯本地处理。</p>
+      </div>
+      <div class="panel">
+        <div class="hd"><h2>选择图片</h2><span class="hint" id="icstate"></span></div>
+        <div class="bd">
+          <div class="drop" id="icdrop"><span class="ico">⤒</span><b>拖拽 / 点击选择</b> 图片
+            <input type="file" id="icfile" accept="image/*" class="hidden"></div>
+          <div class="row mt10" style="flex-wrap:wrap">
+            <label class="f mb10">格式
+              <select id="icFmt"><option value="image/webp">WebP</option><option value="image/jpeg">JPG</option><option value="image/png">PNG</option></select></label>
+            <label class="f mb10">质量 <span id="icQval" class="mono">0.80</span>
+              <input type="range" id="icQ" min="0.1" max="1" step="0.05" value="0.8" style="vertical-align:middle;width:120px"></label>
+            <label class="f mb10">最大宽度
+              <select id="icWidth"><option value="0">不限</option><option value="1080">1080</option><option value="750">750</option><option value="1242">1242</option></select></label>
+            <label class="f mb10">最大高度
+              <select id="icHeight"><option value="0" selected>不限</option><option value="1080">1080</option><option value="1600">1600</option></select></label>
+          </div>
+          <div class="row mt10">
+            <button class="btn btn-pri" id="icGo">压缩</button>
+            <button class="btn btn-ghost" id="icDownload" style="display:none">下载</button>
+          </div>
+          <div class="split mt14" id="icResult" style="display:none">
+            <div><label class="f">原图</label><div class="scrollbox" id="icOrigBox"></div><div class="tiny mt6" id="icOrigInfo"></div></div>
+            <div><label class="f">压缩后</label><div class="scrollbox" id="icNewBox"></div><div class="tiny mt6" id="icNewInfo"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 图片加水印 ========== -->
+    <section id="tab-imgwatermark" class="tab">
+      <div class="tool-head">
+        <div class="crumb">工具 11</div>
+        <h1>图片加水印</h1>
+        <p>给图片加文字水印防盗图、做品牌露出：单角标（右下）或全图平铺斜纹。选字号、透明度、颜色、角度，本地处理。</p>
+      </div>
+      <div class="panel">
+        <div class="hd"><h2>选择图片</h2><span class="hint" id="wmstate"></span></div>
+        <div class="bd">
+          <div class="drop" id="wmdrop"><span class="ico">⤒</span><b>拖拽 / 点击选择</b> 图片
+            <input type="file" id="wmfile" accept="image/*" class="hidden"></div>
+          <div class="row mt10" style="flex-wrap:wrap">
+            <label class="f mb10">水印文字 <input type="text" id="wmText" value="效率工具情报" style="width:170px"></label>
+            <label class="f mb10">样式
+              <select id="wmStyle"><option value="corner">单角标(右下)</option><option value="tile">平铺斜纹</option></select></label>
+            <label class="f mb10">透明度 <input type="range" id="wmOp" min="0.05" max="0.6" step="0.05" value="0.18" style="vertical-align:middle;width:100px"></label>
+            <label class="f mb10">字号
+              <select id="wmSize"><option value="22">小</option><option value="34" selected>中</option><option value="52">大</option></select></label>
+            <label class="f mb10">颜色 <input type="color" id="wmColor" value="#ffffff" class="minicolor"></label>
+            <label class="f mb10">角度° <input type="number" id="wmAngle" value="-30" min="-90" max="90" style="width:56px"></label>
+          </div>
+          <div class="row mt10">
+            <button class="btn btn-pri" id="wmGo">加 水印</button>
+            <button class="btn btn-ghost" id="wmDownload" style="display:none">下载</button>
+            <span class="tiny" id="wmOut"></span>
+          </div>
+          <div class="scrollbox" id="wmPatch"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 热榜选题 ========== -->
+    <section id="tab-hotlist" class="tab">
+      <style>
+        #hlWrap{display:flex;gap:14px;align-items:flex-start}
+        #hlList{flex:1;min-width:0}
+        #hlPick{width:252px;flex-shrink:0}
+        .hl-pf{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+        .hl-pf button{padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink-2);cursor:pointer;font-size:12.5px;font-family:inherit}
+        .hl-pf button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+        #hlItems{max-height:560px;overflow:auto}
+        .hl-item{display:flex;gap:8px;align-items:flex-start;padding:8px 4px;border-bottom:1px solid var(--line-2)}
+        .hl-item .rank{width:22px;text-align:center;font-weight:800;color:var(--ink-3);font-size:13px}
+        .hl-item.top .rank{color:var(--accent-2)}
+        .hl-item a{flex:1;text-decoration:none;color:var(--ink);line-height:1.5}
+        .hl-item a:hover{color:var(--accent-2)}
+        .hl-item .heat{color:var(--ink-3);font-size:11px;white-space:nowrap}
+        #hlPickList{max-height:440px;overflow:auto}
+        .pick-item{display:flex;gap:6px;align-items:center;padding:7px 4px;border-bottom:1px solid var(--line-2);font-size:12.5px}
+        .pick-item .del{cursor:pointer;color:var(--ink-3);border:0;background:none;font-size:15px}
+      </style>
+      <div class="tool-head">
+        <div class="crumb">工具 12</div>
+        <h1>热榜选题</h1>
+        <p>聚合全网热点帮你「有的写」：头条 / 百度 / B站 / <b>GitHub 趋势</b> / <b>Hacker News</b>（HN 侧重 AI 与科技）实时热榜。<b>🤖 AI 相关</b>一键只看 AI 条目，适合你赛道的一键加进选题清单导出。需联网到各平台源；Reddit 本机网络连不通，X / Facebook 趋势需高级 API，均未接入。</p>
+      </div>
+      <div class="panel">
+        <div class="hd"><h2>热榜</h2><span class="hint" id="hlState">加载中…</span></div>
+        <div class="bd">
+          <div id="hlWrap">
+            <div id="hlList">
+              <div class="hl-pf" id="hlPf"></div>
+              <div class="hl-pf" id="hlTf" style="display:none"></div>
+              <div id="hlItems">加载中…</div>
+            </div>
+            <div id="hlPick">
+              <div class="row" style="justify-content:space-between"><b>我的选题清单</b><span class="tiny" id="hlPickN">0</span></div>
+              <div class="tiny mb10">点每条右侧 ＋ 加入；只收你赛道能写的。</div>
+              <div id="hlPickList"><div class="tiny" style="color:var(--ink-3)">还没有选题</div></div>
+              <div class="row mt10">
+                <button class="btn btn-pri btn-sm" id="hlExport">导出选题</button>
+                <button class="btn btn-ghost btn-sm" id="hlKbSave">存清单到知识库</button>
+                <button class="btn btn-ghost btn-sm" id="hlClear">清空</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:12px;border-top:1px solid var(--line-2);padding-top:12px">
+          <div class="row" style="justify-content:space-between">
+            <span><b>🤖 AI 选题生成</b><span class="tiny" style="margin-left:6px">用今日热榜证据 + 账号定位，本地 DeepSeek 生成选题</span></span>
+            <button class="btn btn-pri btn-sm" id="hlAiGo">生成</button>
+          </div>
+          <div id="hlAiOut"><div class="tiny" style="color:var(--ink-3)">点「生成」，约 1 分钟返回 4–6 条贴合你账号的选题。</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 一键分发 ========== -->
+    <section id="tab-publish" class="tab">
+      <div class="tool-head">
+        <div class="crumb">工具 13</div>
+        <h1>一键分发</h1>
+        <p>一份 Markdown 自动整理成各平台可直接粘贴的文案。公众号 / 小红书暂无公开发布 API，这里生成「标题 + 正文 + 标签」复制即贴；X 可一键转推文。选平台、填话题与链接，生成后逐平台复制。</p>
+      </div>
+      <div class="panel">
+        <div class="hd"><h2>原文与参数</h2><span class="hint">首行 <code># 标题</code>，其余为正文</span></div>
+        <div class="bd">
+          <textarea id="pbSrc" spellcheck="false" style="min-height:140px" placeholder="# 标题&#10;&#10;正文 Markdown…"></textarea>
+          <div class="row mt10" style="flex-wrap:wrap">
+            <label class="f mb10">话题标签（逗号分隔，知乎/小红书/X 用）<input type="text" id="pbTags" placeholder="效率工具, 自媒体, 涨粉" style="width:220px"></label>
+            <label class="f mb10">附带链接（选填）<input type="text" id="pbLink" placeholder="https://tools.1616666.xyz/..." style="width:230px"></label>
+          </div>
+          <div class="row mt10" style="flex-wrap:wrap">
+            <span class="f">平台</span>
+            <label class="f mb10"><input type="checkbox" id="pbWx" checked> 公众号</label>
+            <label class="f mb10"><input type="checkbox" id="pbZh" checked> 知乎</label>
+            <label class="f mb10"><input type="checkbox" id="pbXhs" checked> 小红书</label>
+            <label class="f mb10"><input type="checkbox" id="pbX"> X/Twitter</label>
+            <button class="btn btn-pri btn-sm" id="pbGo">生成分发清单</button>
+            <button class="btn btn-ghost btn-sm" id="pbKbSave">存成稿到知识库</button>
+          </div>
+          <div id="pbOut"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== AI 周报 ========== -->
+    <section id="tab-aiweek" class="tab">
+      <style>
+        #aiwCtrl{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+        #aiwWrap{display:flex;gap:14px;align-items:flex-start}
+        #aiwList{flex:1;min-width:0}
+        #aiwState{font-size:12px;color:var(--ink-3)}
+        .aiw-group{font-size:12.5px;font-weight:700;color:var(--ink-2);margin:12px 0 6px;letter-spacing:.02em}
+        .aiw-item{display:flex;gap:6px;align-items:flex-start;padding:7px 4px;border-bottom:1px solid var(--line-2)}
+        .aiw-item a{flex:1;text-decoration:none;color:var(--ink);line-height:1.5;min-width:0}
+        .aiw-item a:hover{color:var(--accent-2)}
+        .aiw-item .src{font-size:10.5px;color:var(--ink-3);white-space:nowrap}
+        .aiw-item .star{cursor:pointer;border:0;background:none;font-size:15px;line-height:1;color:var(--ink-3)}
+        .aiw-item .star.on{color:#f59e0b}
+        .aiw-item .del{cursor:pointer;border:0;background:none;color:var(--ink-3);font-size:14px}
+      </style>
+      <div class="tool-head">
+        <div class="crumb">工具 14</div>
+        <h1>AI 周报</h1>
+        <p>每周把 AI 相关热点 + <b>爆款·抖音（红狐）</b>自动汇成一个池子（GitHub 趋势 / Hacker News / 国内头条·百度·B站 + 抖音爆款），点「抓取」跨天累计、去重。<b>☆</b> 标记想写的，一键导出 Markdown 周报。</p>
+      </div>
+      <div class="panel">
+        <div class="hd"><h2>本周 AI 热点</h2><span class="hint" id="aiwState">加载中…</span></div>
+        <div class="bd">
+          <div id="aiwCtrl">
+            <button class="btn btn-pri btn-sm" id="aiwGrab">抓取本周 AI 热点</button>
+            <button class="btn btn-ghost btn-sm" id="aiwExport">导出周报 Markdown</button>
+            <button class="btn btn-ghost btn-sm" id="aiwClear">清空本周</button>
+            <span class="tiny">存于本机 localStorage，跨天可重复「抓取」累计去重</span>
+          </div>
+          <div id="aiwWrap">
+            <div id="aiwList"><div class="tiny" style="color:var(--ink-3)">还没有数据，点「抓取本周 AI 热点」开始。</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 违禁词检测 ========== -->
+    <section id="tab-banword" class="tab">
+      <div class="tool-head">
+        <div class="crumb">工具 15</div>
+        <h1>违禁词检测</h1>
+        <p>公众号 / 小红书 / 知乎发前自查：<b>广告法极限词、敏感违禁、医疗夸大、引流词、平台违规</b>一网打尽。粘贴正文点「检测」，命中处标红并给出类别，可一键复制「已清洗」版（命中词替换为 <code>*</code>）。</p>
+      </div>
+      <div class="panel">
+        <div class="hd"><h2>检测文本</h2><span class="hint" id="bwState">粘贴正文开始</span></div>
+        <div class="bd">
+          <textarea id="bwSrc" spellcheck="false" style="min-height:140px" placeholder="把公众号 / 小红书 / 知乎文案粘贴进来…"></textarea>
+          <div class="row mt10" style="flex-wrap:wrap">
+            <button class="btn btn-pri btn-sm" id="bwGo">检测</button>
+            <button class="btn btn-ghost btn-sm" id="bwCopy">复制清洗版</button>
+            <button class="btn btn-ghost btn-sm" id="bwRedfox">🔥 抖音爆款扫描</button>
+            <label class="f mb10" style="flex:1;min-width:200px"><input type="checkbox" id="bwStrict"> 严苛模式（含更多平台词）</label>
+          </div>
+          <div id="bwOut"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 知识库 ========== -->
+    <section id="tab-kb" class="tab">
+      <style>
+        #kbWrap{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+        #kbList{flex:1;min-width:220px}
+        #kbEditor{flex:1.3;min-width:260px;border:1px solid var(--line);border-radius:12px;padding:14px}
+        .kb-item{display:flex;gap:8px;align-items:flex-start;padding:9px 6px;border-bottom:1px solid var(--line-2);cursor:pointer}
+        .kb-item:hover{background:var(--card-2)}
+        .kb-item.on{background:var(--accent-soft)}
+        .kb-item b{color:var(--ink);font-size:13.5px;line-height:1.4}
+        .kb-item .meta{font-size:10.5px;color:var(--ink-3);margin-top:2px}
+        .kb-type{font-size:10.5px;border-radius:4px;padding:1px 5px;white-space:nowrap;flex:none}
+      </style>
+      <div class="tool-head">
+        <div class="crumb">工具 16</div>
+        <h1>知识库</h1>
+        <p>本地 Markdown 知识库：收 <b>选题 / 成稿 / 拆书 / 素材</b>，<b>全局搜索</b>、按类型筛选、一键导出到 Obsidian。数据存在本机 <code>~/workspace/content-toolbox/data/kb/</code>（<b>仅 localhost</b>，公开页不可用）。</p>
+      </div>
+      <div class="panel">
+        <div class="hd"><h2>内容库</h2><span class="hint" id="kbState">加载中…</span></div>
+        <div class="bd">
+          <div class="row mb10" style="flex-wrap:wrap;gap:8px">
+            <input id="kbQ" class="f" style="flex:1;min-width:180px" placeholder="🔍 搜索标题 / 标签 / 正文…">
+            <button class="btn btn-pri btn-sm" id="kbNew">＋ 写新条</button>
+            <button class="btn btn-ghost btn-sm" id="kbObsidian">导出到 Obsidian</button>
+          </div>
+          <div class="row mb10" id="kbFilter" style="flex-wrap:wrap;gap:6px"></div>
+          <div id="kbWrap">
+            <div id="kbList"><div class="tiny" style="color:var(--ink-3)">还没有条目，点「写新条」，或从热榜 / AI 选题 / 一键分发收藏。</div></div>
+            <div id="kbEditor">
+              <div class="row mb10" style="justify-content:space-between;align-items:center"><b>编辑</b><span class="tiny" id="kbEdId"></span></div>
+              <label class="f mb10">标题<input id="kbT" class="f" style="width:100%" placeholder="标题"></label>
+              <div class="row mb10" style="gap:8px;flex-wrap:wrap">
+                <label class="f">类型<select id="kbType"><option>选题</option><option>成稿</option><option>拆书</option><option>素材</option></select></label>
+                <label class="f" style="flex:1;min-width:120px">标签<input id="kbTags" class="f" placeholder="逗号分隔"></label>
+              </div>
+              <div class="row mb10" style="gap:8px;flex-wrap:wrap">
+                <label class="f" style="flex:1;min-width:120px">来源<input id="kbSrc" class="f" placeholder="选填"></label>
+                <label class="f">日期<input id="kbDate" class="f" type="date"></label>
+              </div>
+              <textarea id="kbBody" class="f" style="width:100%;min-height:220px" placeholder="写正文 / 素材（Markdown）…"></textarea>
+              <div class="row mt10" style="gap:8px">
+                <button class="btn btn-pri btn-sm" id="kbSaveBtn">保存</button>
+                <button class="btn btn-ghost btn-sm" id="kbDelBtn">删除</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 设置 ========== -->
+    <section id="tab-settings" class="tab">
+      <div class="tool-head">
+        <div class="crumb">系统</div>
+        <h1>设置</h1>
+        <p>关于这个工作台、快捷键，以及本地运行方式。</p>
+      </div>
+      <div class="panel"><div class="hd"><h2>快捷键</h2></div><div class="bd">
+        <div class="stat">
+          <span class="mono">1–9</span> 切换工具 &nbsp; <span class="mono">T</span> 深浅色 &nbsp;
+          <span class="mono">Ctrl/Cmd + Enter</span> 当前工具主操作 &nbsp; <span class="mono">Ctrl/Cmd + Shift + C</span> 复制当前结果
+        </div>
+      </div></div>
+      <div class="panel"><div class="hd"><h2>本地运行</h2></div><div class="bd">
+        <div class="codebox">cd ~/workspace/content-toolbox<br>python3 server.py<br># 打开 http://localhost:8080</div>
+        <div class="tiny mt6">localhost 是安全上下文：R2 签名、剪贴板复制正常。建议用 localhost 而非 file:// 打开。</div>
+      </div></div>
+      <div class="panel"><div class="hd"><h2>AI 选题定位</h2></div><div class="bd">
+        <label class="f">账号领域（中文，用于「热榜→AI 选题」）
+          <input type="text" id="setNiche" placeholder="职场软技能、效率工具" style="width:100%;max-width:420px"></label>
+        <div class="tiny mt6">存本机 localStorage，只在调用本地 DeepSeek 时发送（不经过公开页）。</div>
+      </div></div>
+      <div class="panel"><div class="hd"><h2>知识库导出目录</h2></div><div class="bd">
+        <label class="f">Obsidian / 目标目录（「知识库→导出」写到这）
+          <input type="text" id="setKbTarget" style="width:100%;max-width:480px"></label>
+        <div class="tiny mt6">默认指向你的 Obsidian 仓库子目录（<code>/Users/zhangyang/BlinkLLMWiki-Release-v1.0/ContentKB</code>），可改成任意本地目录。</div>
+      </div></div>
+      <div class="panel"><div class="hd"><h2>数据存放</h2></div><div class="bd">
+        <div class="tiny">R2 密钥、主题偏好存浏览器 <code>localStorage</code>，只在请求时发往 Cloudflare，不经过任何第三方。图片不在本地留副本，上传成功后仅记录直链 URL（可一键清除历史）。</div>
+      </div></div>
+    </section>
+
+  </main>
+</div>
+<div id="toast"></div>
+
+<script src="vendor/markdown-it.umd.min.js"></script>
+<script src="vendor/html2canvas.min.js"></script>
+<script src="vendor/jszip.min.js"></script>
+<script src="vendor/qrcode.js"></script>
+<script src="vendor/qrcode-utf8.js"></script>
+<script>
+'use strict';
+/* ===================================================================
+   Content Toolbox — all tools in one local dashboard
+   =================================================================== */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const md = window.markdownit({html:true, linkify:true, breaks:true});
+const store = {
+  get(k, d){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch(e){return d;} },
+  set(k,v){ localStorage.setItem(k, JSON.stringify(v)); },
+  del(k){ localStorage.removeItem(k); }
+};
+
+/* ---------- theme ---------- */
+const applyTheme = t => { document.documentElement.dataset.theme = t;
+  $('#themeToggle').textContent = t==='dark' ? '☀️' : '🌙'; };
+$('#themeToggle').onclick = () => { const t = document.documentElement.dataset.theme==='dark'?'light':'dark';
+  applyTheme(t); store.set('ct-theme', t); };
+applyTheme(store.get('ct-theme','light'));
+
+/* ---------- tabs ---------- */
+function showTab(name){ $$('.tab').forEach(s=>s.classList.toggle('active', s.id==='tab-'+name));
+  $$('.nav button').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
+  if(name==='wechat') renderW(); if(name==='mdpng') renderMdPreview(); if(name==='card') renderCards(true);
+  if(name==='cover') renderCover(); if(name==='count') renderCount();
+  if(name==='qrcode') renderQR(); if(name==='hotlist') loadHot();
+  if(name==='aiweek') aiwInit(); if(name==='kb') kbLoad(); }
+$$('.nav button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+document.addEventListener('keydown', e=>{
+  if(e.target.matches('textarea,input,select')) return;
+  if(e.key>='1'&&e.key<='9'){ showTab(['r2','mdpng','card','emoji','wechat','cover','count','qrcode','grid9'][+e.key-1]); }
+  if(e.key==='t'||e.key==='T') $('#themeToggle').click();
+});
+
+/* ---------- toast ---------- */
+function toast(msg, type=''){ const el=document.createElement('div'); el.className='tst '+type;
+  el.textContent=msg; $('#toast').appendChild(el); setTimeout(()=>{el.style.opacity='0';el.style.transition='opacity .3s';
+  setTimeout(()=>el.remove(),300);},2200); }
+function copyText(t){ return navigator.clipboard.writeText(t); }
+
+/* ===================================================================
+   01 · R2 图床
+   =================================================================== */
+const r2cfgStore='ct-r2';
+let r2cfg = store.get(r2cfgStore, null);
+function r2Mode(){ return 'worker'; }
+function applyR2Mode(){ $('#r2WorkerFields').classList.remove('hidden'); }
+function fillR2(){ if(!r2cfg) return;
+  $('#r2WorkerUrl').value=r2cfg.workerUrl||''; $('#r2ApiKey').value=r2cfg.apiKey||'';
+  applyR2Mode(); }
+fillR2();
+$('#r2Save').onclick=()=>{ r2cfg={mode:'worker', workerUrl:$('#r2WorkerUrl').value.trim(), apiKey:$('#r2ApiKey').value.trim()};
+  store.set(r2cfgStore,r2cfg); updateR2State(); toast('R2 配置已保存(本机)','ok'); };
+function updateR2State(){ $('#r2cfgState').textContent = r2cfg ? '已配置 ✓' : '未配置';
+  $('#r2upstate').textContent = r2cfg ? '' : '请先完成上方配置'; }
+updateR2State();
+
+/* AWS SigV4 (path-style) for R2 */
+const te = s => new TextEncoder().encode(s);
+async function sha256Hex(d){ const h=await crypto.subtle.digest('SHA-256', d);
+  return [...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join(''); }
+async function hmacRaw(key,data){ const k=await crypto.subtle.importKey('raw', typeof key==='string'?te(key):key,
+    {name:'HMAC',hash:'SHA-256'},false,['sign']);
+  return new Uint8Array(await crypto.subtle.sign('HMAC',k,typeof data==='string'?te(data):data)); }
+async function hmacHex(key,data){ return [...await hmacRaw(key,data)].map(b=>b.toString(16).padStart(2,'0')).join(''); }
+async function signPut({host,path,contentType,payload,amzDate,dateStamp,ak,sk}){
+  const payloadHash=await sha256Hex(payload);
+  const canH=`content-type:${contentType}\nhost:${host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${amzDate}\n`;
+  const sh='content-type;host;x-amz-content-sha256;x-amz-date';
+  const canonical=[ 'PUT', path, '', canH, sh, payloadHash ].join('\n');
+  const scope=`${dateStamp}/auto/s3/aws4_request`;
+  const sts=`AWS4-HMAC-SHA256\n${amzDate}\n${scope}\n${await sha256Hex(te(canonical))}`;
+  const kD=await hmacRaw('AWS4'+sk,dateStamp); const kR=await hmacRaw(kD,'auto');
+  const kS=await hmacRaw(kR,'s3'); const kSign=await hmacRaw(kS,'aws4_request');
+  const sig=await hmacHex(kSign,sts);
+  return {Auth:`AWS4-HMAC-SHA256 Credential=${ak}/${scope}, SignedHeaders=${sh}, Signature=${sig}`, payloadHash};
+}
+function encPath(seg){ return encodeURIComponent(seg).replace(/[!'()*]/g,c=>'%'+c.charCodeAt(0).toString(16).toUpperCase()); }
+
+async function uploadToR2(file){
+  const host = new URL(r2cfg.endpoint).host;
+  const key = ($('#r2prefix').value.trim()? $('#r2prefix').value.trim().replace(/\/?$/,'/') : '') + `${Date.now()}-${file.name.replace(/[^\w.\-]/g,'_')}`;
+  const path = '/'+encPath(r2cfg.bucket)+'/'+encPath(key).replace(/%2F/g,'/');
+  const amzDate = new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,''); // YYYYMMDDTHHMMSSZ
+  const dateStamp = amzDate.slice(0,8);
+  const payload = await file.arrayBuffer();
+  const contentType = file.type || 'application/octet-stream';
+  document.getElementById('r2upstate').textContent = '上传中 '+key+' …';
+  const {Auth,payloadHash:ph} = await signPut({host,path,contentType,payload,amzDate,dateStamp,ak:r2cfg.ak,sk:r2cfg.sk});
+  const res = await fetch(`https://${host}${path}`,{method:'PUT',
+    headers:{Authorization:Auth,'x-amz-date':amzDate,'x-amz-content-sha256':ph,'content-type':contentType, 'content-length':payload.byteLength},
+    body:payload});
+  if(!res.ok) throw new Error('R2 返回 HTTP '+res.status+' — '+(res.status===403?'请检查密钥/权限/CORS':'请检查配置'));
+  const url = r2cfg.pub.replace(/\/$/,'')+'/'+key;
+  return {url,key};
+}
+
+const drop=$('#r2drop'), fileInput=$('#r2file');
+drop.onclick=()=>fileInput.click();
+fileInput.onchange=()=>{ if(fileInput.files[0]) doUpload(fileInput.files[0]); };
+['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over');}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over');}));
+drop.addEventListener('drop',e=>{ const f=e.dataTransfer.files[0]; if(f) doUpload(f); });
+document.addEventListener('paste',e=>{ if(document.activeElement&&document.activeElement.closest('#tab-r2')&&!document.activeElement.matches('input,textarea'))
+  { const f=[...e.clipboardData.items].find(i=>i.type.startsWith('image/')); if(f&&f.getAsFile) doUpload(f.getAsFile()); } });
+
+let hist=[];
+async function uploadToWorker(file){
+  const fd=new FormData(); fd.append('file', file, file.name);
+  const p=$('#r2prefix').value.trim(); if(p) fd.append('prefix', p.replace(/\/$/,''));
+  const headers={}; if(r2cfg.apiKey) headers['x-api-key']=r2cfg.apiKey;
+  document.getElementById('r2upstate').textContent='上传中 '+file.name+' …';
+  const res=await fetch(r2cfg.workerUrl.replace(/\/$/,'')+'/upload',{method:'POST',headers,body:fd});
+  const data=await res.json();
+  if(!res.ok) throw new Error((data&&data.error)||('Worker HTTP '+res.status));
+  return data; // {url, key}
+}
+function doUpload(file){
+  if(!r2cfg) return toast('请先在「R2 图床」上方完成配置','err');
+  const job = r2cfg.mode==='worker' ? uploadToWorker(file) : uploadToR2(file);
+  job.then(r=>{ addResult(r); document.getElementById('r2upstate').textContent=''; toast('上传成功 ✓','ok'); })
+    .catch(err=>{ document.getElementById('r2upstate').textContent='上传失败'; toast('上传失败：'+err.message,'err'); });
+}
+function addResult(r){
+  $('#r2results').prepend(resultCard(r));
+  hist.unshift(r); hist=hist.slice(0,30); store.set('ct-r2hist', hist);
+}
+function resultCard(r){
+  const mdS=`![${r.key}](${r.url})`; const htmlS=`<img src="${r.url}" alt="${r.key}">`;
+  const d=document.createElement('div'); d.className='result';
+  d.innerHTML=`<div class="row"><span class="label" style="margin:0">${r.key}</span>
+     <button class="btn btn-sm btn-soft cc">复制</button><button class="btn btn-sm btn-ghost dl">删除</button></div>
+     <div class="codebox" style="color:var(--ink)">${r.url}</div>
+     <div class="tiny mt6">Markdown</div><div class="codebox" id="rmd">${esc(mdS)}</div>
+     <div class="tiny mt6">HTML</div><div class="codebox" id="rhtml">${esc(htmlS)}</div>`;
+  d.querySelector('.cc').onclick=()=>copyText(mdS).then(()=>{d.querySelector('.cc').textContent='已复制✓';toast('Markdown 片段已复制','ok');});
+  d.querySelector('.dl').onclick=()=>{ d.remove();
+    hist=hist.filter(x=>x.url!==r.url); store.set('ct-r2hist',hist);
+    if(d&&d.parentNode===null){} };
+  const im=new Image(); im.src=r.url; im.onload=()=>{ d.insertBefore(im, d.querySelector('.cc').parentNode.nextSibling); };
+  return d;
+}
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ===================================================================
+   02 · Markdown → PNG
+   =================================================================== */
+const mdThemes={light:{bg:'#ffffff',ink:'#1c2230'},dark:{bg:'#0f1217',ink:'#e8ebf0'},
+  paper:{bg:'#faf6ee',ink:'#3b3325'}};
+function mdApply(){ const t=mdThemes[$('#mdTheme').value]; const w=$('#mdWidth').value;
+  const p=$('#mdPad').value; const el=$('#mdPreview');
+  el.style.width=w+'px'; el.style.padding=p+'px'; el.style.background=t.bg; el.style.color=t.ink;
+  $('#mdPreviewWrap').style.background=t.bg; }
+function renderMdPreview(){ const src=$('#mdSrc').value||'# 题目\n\n输入你的一段文字…';
+  $('#mdPreview').innerHTML=md.render(src); mdApply(); }
+$('#mdTheme').onchange=mdApply; $('#mdWidth').onchange=mdApply; $('#mdPad').onchange=mdApply;
+$('#mdSrc').addEventListener('input',renderMdPreview);
+renderMdPreview();
+
+async function exportImg(el,{name,scale=2,bg}={}){
+  const c=await html2canvas(el,{scale,backgroundColor:bg||null,useCORS:true});
+  return c;
+}
+$('#mdExport').onclick=async()=>{ const el=$('#mdPreview'); $('#mdOut').textContent='生成中…';
+  try{ const c=await exportImg(el,{scale:2,name:'md'}); const a=document.createElement('a');
+    c.toBlob(b=>{ a.href=URL.createObjectURL(b); a.download='markdown-'+Date.now()+'.png'; a.click(); }, 'image/png');
+    $('#mdOut').textContent='已导出 ✓'; toast('已导出 PNG','ok'); }catch(e){ $('#mdOut').textContent='失败'; toast(e.message,'err'); } };
+$('#mdCopyImg').onclick=async()=>{ try{ const c=await exportImg($('#mdPreview'),{scale:2});
+    const b=await new Promise(r=>c.toBlob(r)); await navigator.clipboard.write([new ClipboardItem({'image/png':b})]);
+    toast('图片已复制','ok'); }catch(e){ toast('复制失败：'+e.message,'err'); } };
+
+/* ===================================================================
+   03 · 图文卡片 (3:4)
+   =================================================================== */
+const cardThemes=['#0f172a','#fff7ed','#fdf2f8','#e7f5f3','#fef3c7','#0d9488'];
+let cardPages=[];
+function cardColors(){ return {bg:$('#cardBg').value, tx:$('#cardTx').value}; }
+function buildPages(src){
+  const raw=src.split(/\r?\n/);
+  const pages=[[]]; let cur=pages[0]; let i=0;
+  for(const line of raw){
+    if(/^\s*---\s*$/.test(line)){ pages.push(cur=[]); continue; }
+    if(/^\s*===\s*$/.test(line)){ cur.push({t:'divider'}); continue; }
+    if(line.trim()===''){ continue; }
+    const parts=line.split(/(==[^=]+==)/g);
+    const segs=parts.filter(p=>p!=='').map(p=>{
+      const m=p.match(/^==([^=]+)==$/); return m?{h:m[1]}:{t:p}; });
+    cur.push({t:'line', segs, center: !!1});
+  }
+  return pages.filter(p=>p.length);
+}
+function renderCards(full){
+  const src=$('#cardSrc').value;
+  cardPages=buildPages(src);
+  const anchor=$('#cardAnchor'); anchor.innerHTML='';
+  cardPages.forEach((page,idx)=>{
+    const card=document.createElement('div');
+    card.style.width='1242px'; card.style.height='1656px';
+    card.style.background=cardColors().bg; card.style.color=cardColors().tx;
+    card.style.fontFamily='var(--serif, "Songti SC", serif)';
+    card.style.padding='120px 96px'; card.style.display='flex'; card.style.flexDirection='column';
+    card.style.justifyContent='center'; card.style.gap='36px';
+    card.style.boxSizing='border-box'; card.style.position='relative';
+    page.forEach(item=>{
+      if(item.t==='divider'){ const d=document.createElement('div'); d.style.width='96px'; d.style.height='6px';
+        d.style.background='currentColor'; d.style.opacity='.55'; d.style.margin='16px 0'; d.style.borderRadius='3px';
+        if($('#cardAlign').value==='center') d.style.margin='16px auto'; card.appendChild(d); return; }
+      const p=document.createElement('p'); p.style.margin='0';
+      p.style.fontSize=$('#cardSize').value+'px'; p.style.lineHeight='1.55';
+      p.style.fontWeight='500'; p.style.textAlign=$('#cardAlign').value; p.style.color='inherit';
+      item.segs.forEach(s=>{ if(s.h){ const sp=document.createElement('span');
+        sp.textContent=s.h; sp.style.background='rgba(255,255,255,.16)';
+        sp.style.padding='2px 14px'; sp.style.borderRadius='8px'; sp.style.boxDecorationBreak='clone'; p.appendChild(sp);}
+        else { p.appendChild(document.createTextNode(s.t)); } });
+      card.appendChild(p);
+    });
+    const n=document.createElement('div');
+    n.style.cssText='position:absolute;bottom:60px;right:96px;font-size:26px;opacity:.5;font-family:var(--ui)';
+    n.textContent=(idx+1)+' / '+cardPages.length; card.appendChild(n);
+    const wrap=document.createElement('div'); wrap.className='cardwrap'; wrap.style.cssText='transform:scale(.3);transform-origin:top left;margin-bottom:36px';
+    wrap.appendChild(card);
+    const stage=document.createElement('div'); stage.className='cardstage'; stage.style.cssText='width:372px;overflow:hidden';
+    stage.appendChild(wrap); anchor.appendChild(stage);
+  });
+  $('#cardPageInfo').textContent=cardPages.length?cardPages.length+' 页':'无内容';
+  if(!cardPages.length) cardOutSet('');
+}
+$('#cardRender').onclick=()=>{ renderCards(); cardOutSet('已生成 '+cardPages.length+' 页'); };
+$('#cardSrc').addEventListener('input',()=>renderCards(true));
+[ $('#cardBg'),$('#cardTx'),$('#cardSize'),$('#cardAlign') ].forEach(el=>el.addEventListener('change',()=>renderCards(true)));
+function cardOutSet(t){ $('#cardOut').textContent=t; }
+$('#cardExport').onclick=async()=>{ if(!cardPages.length) return toast('无内容');
+  cardOutSet('导出中…'); try{
+    for(let i=0;i<cardPages.length;i++){ const el=$('#cardAnchor').children[i].firstElementChild.firstElementChild;
+      const c=await html2canvas(el,{scale:1.5,backgroundColor:cardColors().bg,useCORS:true,
+        onclone:(doc)=>{ doc.querySelectorAll('.cardwrap').forEach(w=>w.style.transform='none');
+          doc.querySelectorAll('.cardstage').forEach(s=>{s.style.overflow='visible'; s.style.width='auto';}); }});
+      const b=await new Promise(r=>c.toBlob(r,'image/png')); const a=document.createElement('a');
+      a.href=URL.createObjectURL(b); a.download='card-'+(i+1)+'-'+Date.now()+'.png'; a.click(); await new Promise(r=>setTimeout(r,350)); }
+    cardOutSet('已导出 ✓'); toast('已导出 '+cardPages.length+' 张卡片','ok');
+  }catch(e){ cardOutSet('失败'); toast(e.message,'err'); } };
+renderCards(true);
+
+/* ===================================================================
+   04 · 去除 Emoji
+   =================================================================== */
+const EMOJIRE=/\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*/gu;
+const SYMBOLRE=/[\p{P}\p{S}]/gu;
+$('#emGo').onclick=()=>{ const src=$('#emIn').value; let out=src.replace(EMOJIRE,'');
+  out=out.replace(/[\u{FE00}-\u{FE0F}]/gu,'').replace(/[\u{1F3FB}-\u{1F3FF}]/gu,'');
+  const removed=src.length-out.length;
+  if($('#emSym').checked) out=out.replace(SYMBOLRE,'');
+  if($('#emSpace').checked) out=out.replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').replace(/^\s+|\s+$/gm,'').replace(/\s{2,}/g,' ');
+  $('#emOut').value=out; $('#emOut2').textContent='去掉 '+removed+' 个字符'; };
+$('#emCopy').onclick=()=>copyText($('#emOut').value).then(()=>toast('结果已复制','ok'));
+
+/* ===================================================================
+   05 · 公众号排版
+   =================================================================== */
+const themes={
+  paper:{name:'素纸',bg:'#ffffff',ink:'#3f3a34',head:'#1d1a16',muted:'#9a948a',acc:'#b45309',quote:'#faf6ee'},
+  ink:{name:'墨韵',bg:'#ffffff',ink:'#2b2b2b',head:'#111',muted:'#7a7a7a',acc:'#111',quote:'#f3f3f3'},
+  mint:{name:'薄荷',bg:'#ffffff',ink:'#2b3a37',head:'#134e4a',muted:'#7c918c',acc:'#0f766e',quote:'#e7f5f3'},
+  rose:{name:'绯红',bg:'#fffafa',ink:'#4a2b2b',head:'#7f1d1d',muted:'#a88484',acc:'#b91c1c',quote:'#fdf2f2'},
+  navy:{name:'湛蓝',bg:'#f8fbff',ink:'#243449',head:'#1e293b',muted:'#8aa0b8',acc:'#1d4ed8',quote:'#eef4ff'},
+  night:{name:'暗夜',bg:'#16181d',ink:'#e6e9ed',head:'#fff',muted:'#9aa3ad',acc:'#2dd4bf',quote:'#23262c'},
+};
+let wThemeKey='paper';
+function wTheme(){ let t=themes[wThemeKey]; return {...t, acc:$('#wAccent').value}; }
+function renderW(){ const t=wTheme(); const el=$('#wPrev');
+  el.style.background=t.bg; el.style.color=t.ink; el.style.padding='28px 26px'; el.style.borderRadius='6px';
+  el.style.setProperty('--accent',t.acc); el.style.setProperty('--accent-2',t.acc); el.style.setProperty('--accent-soft',t.quote);
+  el.style.setProperty('--ink',t.ink); el.style.setProperty('--ink-2',t.muted); el.style.setProperty('--line', t.bg);
+  el.innerHTML=md.render($('#wSrc').value||'# 标题\n\n开始输入，右侧实时预览公众号排版效果。'); }
+$('#wTheme').onchange=()=>{ wThemeKey=$('#wTheme').value; renderW(); };
+$('#wAccent').oninput=renderW;
+$('#wSrc').addEventListener('input',renderW);
+renderW();
+
+/* inline-style the rendered HTML so WeChat keeps styling when pasted */
+function inlineStyles(t){
+  return {
+    ':root':`color:${t.ink}`,
+    h1:`font-size:22px;font-weight:700;color:${t.head};margin:1.2em 0 .6em;line-height:1.35;`,
+    h2:`font-size:19px;font-weight:700;color:${t.head};margin:1.1em 0 .5em;line-height:1.4;`,
+    h3:`font-size:17px;font-weight:600;color:${t.head};margin:1em 0 .5em;`,
+    p:`font-size:15px;color:${t.ink};line-height:1.85;margin:1em 0;`,
+    a:`color:${t.acc};text-decoration:none;`,
+    strong:`font-weight:700;`,
+    ul:`font-size:15px;color:${t.ink};line-height:1.8;margin:1em 0;padding-left:1.4em;`,
+    ol:`font-size:15px;color:${t.ink};line-height:1.8;margin:1em 0;padding-left:1.4em;`,
+    li:`margin:.5em 0;`,
+    blockquote:`font-size:15px;color:${t.muted};border-left:3px solid ${t.acc};background:${t.quote};padding:.4em 1em;margin:1.2em 0;border-radius:0 6px 6px 0;`,
+    pre:`background:${t.bg};border:1px solid ${t.head};border-radius:6px;padding:14px 16px;overflow-x:auto;margin:1.2em 0;`,
+    code:`font-family:"SF Mono",Menlo,Consolas,monospace;font-size:13.5px;`,
+    img:`max-width:100%;border-radius:6px;margin:.6em 0;`,
+    hr:`border:none;border-top:1px solid ${t.muted};margin:1.6em 0;`,
+    table:`border-collapse:collapse;width:100%;margin:1.2em 0;font-size:14px;`,
+    th:`border:1px solid ${t.muted};padding:7px 11px;background:${t.quote};font-weight:600;`,
+    td:`border:1px solid ${t.muted};padding:7px 11px;`,
+  };
+}
+function inlineTree(root, t){
+  const st=inlineStyles(t);
+  const walk=el=>{ if(el.nodeType!==1) return;
+    const s=st[el.tagName.toLowerCase()]; if(s) el.style.cssText=(s+' '+(el.getAttribute('style')||''));
+    [...el.children].forEach(walk); };
+  walk(root);
+}
+$('#wCopy').onclick=async()=>{ const t=wTheme(); const src=md.render($('#wSrc').value||'');
+  const holder=document.createElement('div'); holder.innerHTML=src; inlineTree(holder,t);
+  const html='<section style="color:'+t.ink+';font-size:15px">'+holder.innerHTML+'</section>';
+  try{ await copyHtml(html); $('#wOut').textContent='已复制 ✓'; toast('富文本已复制，粘到公众号即可','ok'); }
+  catch(e){ $('#wOut').textContent='复制失败'; toast('浏览器拒绝：'+e.message+'（需在 localhost 打开）','err'); } };
+$('#wCopyMd').onclick=()=>copyText($('#wSrc').value).then(()=>toast('Markdown 已复制','ok'));
+
+/* ===================================================================
+   06 · 封面生成
+   =================================================================== */
+const CVT={
+  mint:{bg:'linear-gradient(135deg,#0f766e 0%,#0d9488 55%,#2dd4bf 100%)',ink:'#fff',acc:'#b8f2e4',soft:'rgba(255,255,255,.16)'},
+  ink:{bg:'linear-gradient(135deg,#0f172a 0%,#1e293b 100%)',ink:'#e8ebf0',acc:'#2dd4bf',soft:'rgba(255,255,255,.10)'},
+  navy:{bg:'linear-gradient(135deg,#1e3a8a 0%,#2563eb 100%)',ink:'#fff',acc:'#dbeafe',soft:'rgba(255,255,255,.16)'},
+  rose:{bg:'linear-gradient(135deg,#be123c 0%,#e11d48 100%)',ink:'#fff',acc:'#ffe4e6',soft:'rgba(255,255,255,.16)'},
+  sunset:{bg:'linear-gradient(135deg,#7c3aed 0%,#db2777 50%,#f59e0b 100%)',ink:'#fff',acc:'#fde68a',soft:'rgba(255,255,255,.16)'},
+  forest:{bg:'linear-gradient(135deg,#064e3b 0%,#059669 100%)',ink:'#fff',acc:'#a7f3d0',soft:'rgba(255,255,255,.14)'},
+  paper:{bg:'linear-gradient(135deg,#faf6ee 0%,#f1e9d8 100%)',ink:'#3b3325',acc:'#b45309',soft:'rgba(0,0,0,.07)'},
+};
+const CVRATIO={'169':[1600,900],'34':[1200,1600],'11':[1200,1200]};
+let coverEl=null;
+function renderCover(){
+  const t=CVT[$('#cvTheme').value]; const [fw,fh]=CVRATIO[$('#cvRatio').value]; const fs=+$('#cvSize').value;
+  const badge=$('#cvBadge').value.trim(), title=$('#cvTitle').value.trim()||'你的主标题',
+        sub=$('#cvSub').value.trim(), foot=$('#cvFoot').value.trim();
+  const el=document.createElement('div'); el.className='cover';
+  el.style.cssText=`width:${fw}px;height:${fh}px;background:${t.bg};color:${t.ink};position:relative;overflow:hidden;box-sizing:border-box;font-family:var(--serif);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:9%`;
+  const c1=document.createElement('div'); c1.style.cssText=`position:absolute;width:48%;height:48%;border-radius:50%;background:rgba(255,255,255,.10);top:-16%;right:-12%`;
+  const c2=document.createElement('div'); c2.style.cssText=`position:absolute;width:34%;height:34%;border-radius:50%;background:rgba(255,255,255,.07);bottom:-12%;left:-10%`;
+  el.appendChild(c1); el.appendChild(c2);
+  const stack=document.createElement('div'); stack.style.cssText=`position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;text-align:center;max-width:88%`;
+  if(badge){ const b=document.createElement('div'); b.textContent=badge;
+    b.style.cssText=`font-size:${Math.round(fs*0.30)}px;letter-spacing:.18em;font-weight:600;color:${t.acc};background:${t.soft};border:1px solid ${t.acc};border-radius:999px;padding:10px 26px;margin-bottom:${Math.round(fs*0.5)}px`;
+    stack.appendChild(b); }
+  const h=document.createElement('h1'); h.textContent=title;
+  h.style.cssText=`margin:0;font-size:${fs}px;line-height:1.14;font-weight:800;color:inherit;letter-spacing:.01em`;
+  stack.appendChild(h);
+  const bar=document.createElement('div'); bar.style.cssText=`width:${Math.round(fs*1.5)}px;height:${Math.max(5,Math.round(fs*0.09))}px;background:${t.acc};border-radius:999px;margin:${Math.round(fs*0.42)}px 0 ${Math.round(fs*0.42)}px`;
+  stack.appendChild(bar);
+  if(sub){ const s=document.createElement('div'); s.textContent=sub;
+    s.style.cssText=`font-size:${Math.round(fs*0.40)}px;letter-spacing:.14em;color:${t.ink};opacity:.92;font-weight:500;line-height:1.5`;
+    stack.appendChild(s); }
+  el.appendChild(stack);
+  if(foot){ const f=document.createElement('div'); f.textContent=foot;
+    f.style.cssText=`position:absolute;left:9%;bottom:9%;font-size:${Math.round(fs*0.26)}px;letter-spacing:.12em;opacity:.8;font-family:var(--ui);font-weight:500`;
+    el.appendChild(f); }
+  const wrap=$('#cvWrap'); const scw=$('#cvStage').clientWidth||380;
+  const sc=Math.min(1,(scw-36)/fw);
+  wrap.style.cssText=`width:${Math.round(fw*sc)}px;height:${Math.round(fh*sc)}px;overflow:visible`;
+  el.style.transform=`scale(${sc})`; el.style.transformOrigin='top left';
+  wrap.innerHTML=''; wrap.appendChild(el); coverEl=el;
+}
+['cvBadge','cvTitle','cvSub','cvFoot','cvTheme','cvRatio','cvSize'].forEach(id=>{
+  const el=$('#'+id); if(!el) return;
+  if(id==='cvTheme'||id==='cvRatio'||id==='cvSize') el.addEventListener('change',renderCover);
+  else el.addEventListener('input',renderCover);
+});
+function coverShot(){ return html2canvas(coverEl,{scale:2,backgroundColor:null,useCORS:true,
+  onclone:(doc)=>{ doc.querySelectorAll('.cover').forEach(w=>{w.style.transform='none';}); }}); }
+$('#cvExport').onclick=async()=>{ if(!coverEl) return; $('#cvOut').textContent='生成中…';
+  try{ const c=await coverShot(); const b=await new Promise(r=>c.toBlob(r,'image/png'));
+    const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='cover-'+Date.now()+'.png'; a.click();
+    $('#cvOut').textContent='已导出 ✓'; toast('封面已导出','ok'); }catch(e){ $('#cvOut').textContent='失败'; toast(e.message,'err'); } };
+$('#cvCopy').onclick=async()=>{ if(!coverEl) return; try{ const c=await coverShot();
+    const b=await new Promise(r=>c.toBlob(r,'image/png')); await navigator.clipboard.write([new ClipboardItem({'image/png':b})]);
+    toast('封面已复制','ok'); }catch(e){ toast('复制失败：'+e.message,'err'); } };
+renderCover();
+
+/* ===================================================================
+   07 · 字数统计
+   =================================================================== */
+function statBox(label,val){ return `<div class="statbox"><b>${val}</b><span>${label}</span></div>`; }
+function cntStats(t){
+  const cn=(t.match(/[\u4e00-\u9fff\u3400-\u4dbf]/g)||[]).length;
+  const cp=(t.match(/[\u3000-\u303f\uff00-\uffef]/g)||[]).length;
+  const w=(t.match(/[A-Za-z]+/g)||[]).length;
+  const d=(t.match(/[0-9]/g)||[]).length;
+  return {total:t.length, noSpace:t.replace(/\s/g,'').length, cn, cp, w, d,
+    lines:t===''?0:t.split(/\n/).length,
+    paras:t.split(/\n\s*\n/).filter(b=>b.trim()).length,
+    mins: t.length?Math.max(1,Math.round(cn/300+w/160)):0 };
+}
+function renderCount(){ const s=cntStats($('#ctSrc').value);
+  $('#ctStats').innerHTML=statBox('总字符',s.total)+statBox('不含空格',s.noSpace)+statBox('汉字',s.cn)+
+    statBox('中文标点',s.cp)+statBox('英文单词',s.w)+statBox('数字',s.d)+
+    statBox('行数',s.lines)+statBox('段落数',s.paras)+statBox('约阅读(分钟)',s.mins); }
+$('#ctSrc').addEventListener('input',renderCount);
+$('#ctCopy').onclick=()=>{ const s=cntStats($('#ctSrc').value);
+  const t=`总字符数：${s.total}\n不含空格：${s.noSpace}\n汉字：${s.cn}\n中文标点：${s.cp}\n英文单词：${s.w}\n数字：${s.d}\n行数：${s.lines}\n段落数：${s.paras}\n预计阅读：约 ${s.mins} 分钟`;
+  copyText(t).then(()=>{ toast('统计结果已复制','ok'); }); };
+renderCount();
+
+/* ===================================================================
+   08 · 二维码生成
+   =================================================================== */
+let qrCanvas=null;
+function renderQR(){
+  const stage=$('#qrStage'); const txt=$('#qrText').value.trim();
+  stage.innerHTML='';
+  if(!txt){ stage.innerHTML='<span class="tiny" style="color:var(--ink-3)">输入内容后自动生成二维码</span>'; qrCanvas=null; return; }
+  try{
+    const qr=qrcode(0, $('#qrEc').value);
+    qr.addData(txt); qr.make();
+    const cell=+$('#qrCell').value, fg=$('#qrFg').value, bg=$('#qrBg').value;
+    const n=qr.getModuleCount(), m=4, size=(n+m*2)*cell;
+    const cv=document.createElement('canvas'); cv.width=size; cv.height=size;
+    const ctx=cv.getContext('2d'); ctx.fillStyle=bg; ctx.fillRect(0,0,size,size);
+    ctx.fillStyle=fg; for(let r=0;r<n;r++)for(let c=0;c<n;c++) if(qr.isDark(r,c)) ctx.fillRect((c+m)*cell,(r+m)*cell,cell,cell);
+    cv.style.maxWidth='260px'; cv.style.height='auto'; cv.style.borderRadius='8px'; cv.style.boxShadow='var(--shadow)';
+    stage.appendChild(cv); qrCanvas=cv; $('#qrOut').textContent='';
+  }catch(e){ stage.innerHTML='<span class="tiny" style="color:var(--danger)">生成失败：'+e.message+'</span>'; qrCanvas=null; }
+}
+['qrText','qrEc','qrCell','qrFg','qrBg'].forEach(id=>{ const el=$('#'+id); if(!el) return;
+  if(id==='qrEc'||id==='qrCell') el.addEventListener('change',renderQR); else el.addEventListener('input',renderQR); });
+$('#qrDownload').onclick=async()=>{ if(!qrCanvas) return toast('先生成二维码','err');
+  const b=await new Promise(r=>qrCanvas.toBlob(r,'image/png')); const a=document.createElement('a');
+  a.href=URL.createObjectURL(b); a.download='qrcode-'+Date.now()+'.png'; a.click(); toast('二维码已下载','ok'); };
+$('#qrCopy').onclick=async()=>{ if(!qrCanvas) return toast('先生成二维码','err');
+  const b=await new Promise(r=>qrCanvas.toBlob(r,'image/png')); await navigator.clipboard.write([new ClipboardItem({'image/png':b})]);
+  toast('二维码已复制','ok'); };
+renderQR();
+
+/* ===================================================================
+   09 · 九宫格切图
+   =================================================================== */
+let g9img=null, g9tiles=[];
+function g9load(file){ const rd=new FileReader(); rd.onload=()=>{ g9img=new Image();
+  g9img.onload=()=>{ g9Go(); $('#g9Out').textContent='原图 '+g9img.width+'×'+g9img.height; }; g9img.src=rd.result; };
+  rd.readAsDataURL(file); }
+$('#g9drop').onclick=()=>$('#g9file').click();
+$('#g9file').onchange=()=>{ if($('#g9file').files[0]) g9load($('#g9file').files[0]); };
+['dragover','dragenter'].forEach(ev=>$('#g9drop').addEventListener(ev,e=>{e.preventDefault();$('#g9drop').classList.add('over');}));
+['dragleave','drop'].forEach(ev=>$('#g9drop').addEventListener(ev,e=>{e.preventDefault();$('#g9drop').classList.remove('over');}));
+$('#g9drop').addEventListener('drop',e=>{ const f=e.dataTransfer.files[0]; if(f) g9load(f); });
+function g9TileCanvas(){
+  const cols=+$('#g9Cols').value, rows=+$('#g9Rows').value, gap=+$('#g9Gap').value;
+  let src=g9img;
+  if($('#g9Square').value==='yes'){ const s=Math.min(g9img.width,g9img.height); const sx=(g9img.width-s)/2, sy=(g9img.height-s)/2;
+    const sc=document.createElement('canvas'); sc.width=s; sc.height=s; sc.getContext('2d').drawImage(g9img,sx,sy,s,s,0,0,s,s); src=sc; }
+  const w=src.width, h=src.height, tw=Math.round(w/cols), th=Math.round(h/rows);
+  const outW=tw+gap*2, outH=th+gap*2, tiles=[];
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+    const cv=document.createElement('canvas'); cv.width=outW; cv.height=outH;
+    const ctx=cv.getContext('2d'); ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,outW,outH);
+    ctx.drawImage(src, c*tw, r*th, tw, th, gap, gap, tw, th);
+    tiles.push(cv);
+  }
+  return {tiles,cols,rows,tw,th};
+}
+function g9Go(){ if(!g9img) return toast('先选图片','err');
+  const {tiles,cols,rows,tw,th}=g9TileCanvas(); g9tiles=tiles;
+  const grid=$('#g9Grid'); grid.innerHTML='';
+  tiles.forEach((cv,i)=>{ const d=document.createElement('div'); d.className='tile';
+    cv.style.maxWidth='180px'; cv.style.height='auto'; d.appendChild(cv);
+    const lb=document.createElement('div'); lb.textContent=`${i+1} · ${outWCols(cv)}`; d.appendChild(lb); grid.appendChild(d); });
+  $('#g9Out').textContent=`已切成 ${cols}×${rows} = ${tiles.length} 格，每格 ${tw}×${th}`;
+}
+function outWCols(cv){ return cv.width+'×'+cv.height; }
+$('#g9Go').onclick=g9Go;
+['g9Cols','g9Rows','g9Gap','g9Square'].forEach(id=>$('#'+id).addEventListener('change',()=>{ if(g9img) g9Go(); }));
+$('#g9Zip').onclick=async()=>{ if(!g9tiles.length) return toast('先生成','err');
+  const fmt=$('#g9Fmt').value; const ext=fmt==='image/jpeg'?'jpg':(fmt==='image/webp'?'webp':'png'); const q=fmt==='image/png'?undefined:0.9;
+  const zip=new JSZip();
+  for(let i=0;i<g9tiles.length;i++){ const blob=await new Promise(r=>g9tiles[i].toBlob(r,fmt,q)); zip.file(`slice-${String(i+1).padStart(2,'0')}.${ext}`, blob); }
+  const blob=await zip.generateAsync({type:'blob'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='grid9-'+Date.now()+'.zip'; a.click();
+  toast('已打包下载 '+g9tiles.length+' 张','ok'); };
+
+/* ===================================================================
+   10 · 图片压缩 / 格式转换
+   =================================================================== */
+let icImg=null, icBlob=null, icName='image', icOrigSize=0;
+function fmtSize(b){ return b<1024?b+' B': b<1048576?(b/1024).toFixed(1)+' KB':(b/1048576).toFixed(2)+' MB'; }
+function icLoad(file){ icName=file.name.replace(/\.[^.]+$/,''); icOrigSize=file.size; const rd=new FileReader();
+  rd.onload=()=>{ icImg=new Image(); icImg.onload=()=>{ $('#icstate').textContent='已选 '+icImg.width+'×'+icImg.height+' · '+fmtSize(file.size);
+    const box=$('#icOrigBox'); box.innerHTML=''; const im=new Image(); im.onload=()=>{ im.style.maxWidth='100%'; im.style.borderRadius='6px'; box.appendChild(im); };
+    im.src=URL.createObjectURL(file); $('#icOrigInfo').textContent=fmtSize(file.size); $('#icResult').style.display='none'; $('#icDownload').style.display='none'; };
+    icImg.src=rd.result; }; rd.readAsDataURL(file); }
+$('#icdrop').onclick=()=>$('#icfile').click();
+$('#icfile').onchange=()=>{ if($('#icfile').files[0]) icLoad($('#icfile').files[0]); };
+['dragover','dragenter'].forEach(ev=>$('#icdrop').addEventListener(ev,e=>{e.preventDefault();$('#icdrop').classList.add('over');}));
+['dragleave','drop'].forEach(ev=>$('#icdrop').addEventListener(ev,e=>{e.preventDefault();$('#icdrop').classList.remove('over');}));
+$('#icdrop').addEventListener('drop',e=>{ const f=e.dataTransfer.files[0]; if(f) icLoad(f); });
+$('#icQ').oninput=()=>{ $('#icQval').textContent=(+$('#icQ').value).toFixed(2); };
+$('#icGo').onclick=()=>{ if(!icImg) return toast('先选图片','err');
+  const fmt=$('#icFmt').value, q=+$('#icQ').value; let w=icImg.width, h=icImg.height;
+  const mw=+$('#icWidth').value, mh=+$('#icHeight').value;
+  if(mw>0 && w>mw){ h=Math.round(h*mw/w); w=mw; }
+  if(mh>0 && h>mh){ w=Math.round(w*mh/h); h=mh; }
+  const cv=document.createElement('canvas'); cv.width=w; cv.height=h; cv.getContext('2d').drawImage(icImg,0,0,w,h);
+  cv.toBlob(blob=>{ icBlob=blob; const box=$('#icNewBox'); box.innerHTML='';
+    const im=new Image(); im.onload=()=>{ im.style.maxWidth='100%'; im.style.borderRadius='6px'; box.appendChild(im); }; im.src=URL.createObjectURL(blob);
+    const pct=Math.round((1-blob.size/icOrigSize)*100);
+    $('#icNewInfo').textContent=fmtSize(blob.size)+' · '+w+'×'+h+' · '+(pct>=0?'省 ':'增 ')+Math.abs(pct)+'%';
+    $('#icResult').style.display='grid'; $('#icDownload').style.display='';
+  }, fmt, q); };
+$('#icDownload').onclick=()=>{ if(!icBlob) return; const fmt=$('#icFmt').value;
+  const ext=fmt==='image/jpeg'?'jpg':(fmt==='image/webp'?'webp':'png');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(icBlob); a.download=icName+'-compressed.'+ext; a.click(); toast('已下载','ok'); };
+
+/* ===================================================================
+   11 · 图片加水印
+   =================================================================== */
+let wmImg=null, wmCv=null;
+function wmLoad(file){ const rd=new FileReader(); rd.onload=()=>{ wmImg=new Image();
+  wmImg.onload=()=>{ $('#wmstate').textContent='已选 '+wmImg.width+'×'+wmImg.height+' · 点「加 水印」'; }; wmImg.src=rd.result; };
+  rd.readAsDataURL(file); }
+$('#wmdrop').onclick=()=>$('#wmfile').click();
+$('#wmfile').onchange=()=>{ if($('#wmfile').files[0]) wmLoad($('#wmfile').files[0]); };
+['dragover','dragenter'].forEach(ev=>$('#wmdrop').addEventListener(ev,e=>{e.preventDefault();$('#wmdrop').classList.add('over');}));
+['dragleave','drop'].forEach(ev=>$('#wmdrop').addEventListener(ev,e=>{e.preventDefault();$('#wmdrop').classList.remove('over');}));
+$('#wmdrop').addEventListener('drop',e=>{ const f=e.dataTransfer.files[0]; if(f) wmLoad(f); });
+function wmApply(){ if(!wmImg) return toast('先选图片','err');
+  const cv=document.createElement('canvas'); cv.width=wmImg.width; cv.height=wmImg.height;
+  const ctx=cv.getContext('2d'); ctx.drawImage(wmImg,0,0);
+  const text=$('#wmText').value||'水印'; const op=+$('#wmOp').value;
+  const fs=Math.max(14, Math.round((+$('#wmSize').value)*cv.width/1000));
+  ctx.fillStyle=$('#wmColor').value; ctx.globalAlpha=op; ctx.textBaseline='middle'; ctx.font=`600 ${fs}px var(--ui)`;
+  if($('#wmStyle').value==='corner'){
+    const pad=Math.round(fs*0.85); const tw=ctx.measureText(text).width;
+    ctx.fillText(text, cv.width-tw-pad, cv.height-pad-fs*0.5);
+  } else {
+    const ang=(+$('#wmAngle').value)*Math.PI/180;
+    ctx.save(); ctx.translate(cv.width/2,cv.height/2); ctx.rotate(ang);
+    const tw=ctx.measureText(text).width+fs*3.2, th=fs*5.2;
+    const diag=Math.sqrt(cv.width*cv.width+cv.height*cv.height)/1 + fs*3;
+    for(let y=-diag;y<=diag;y+=th)for(let x=-diag;x<=diag;x+=tw) ctx.fillText(text,x,y);
+    ctx.restore();
+  }
+  ctx.globalAlpha=1; wmCv=cv;
+  const box=$('#wmPatch'); box.innerHTML=''; cv.style.maxWidth='100%'; cv.style.height='auto'; cv.style.borderRadius='6px'; box.appendChild(cv);
+  $('#wmOut').textContent='已生成 '+cv.width+'×'+cv.height; $('#wmDownload').style.display='';
+}
+$('#wmGo').onclick=wmApply;
+$('#wmDownload').onclick=async()=>{ if(!wmCv) return; const b=await new Promise(r=>wmCv.toBlob(r,'image/png'));
+  const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='watermark-'+Date.now()+'.png'; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000); toast('已下载','ok'); };
+
+/* ===================================================================
+   12 · 热榜选题
+   =================================================================== */
+const HL_NAMES={toutiao:'今日头条', bilibili:'哔哩哔哩', baidu:'百度热搜', github:'GitHub 趋势', reddit:'Reddit', hackernews:'Hacker News', redfox:'红狐·抖音爆款'};
+let hlData=null, hlCur='all', hlAI=false, hlPick=store.get('ct-hlpick',[]);
+const AIRE=/AI|GPT|大模型|人工智能|LLM|智能体|ChatGPT|Claude|Gemini|OpenAI|Anthropic|机器学|神经网络|AGI|DeepSeek|a\.i\.|Ai /i;
+async function loadHot(){
+  $('#hlState').textContent='加载中…'; $('#hlItems').innerHTML='加载中…';
+  let data=null;
+  try{ const r=await fetch('/api/hot'); if(r.ok){ const j=await r.json(); if(j&&j.platforms&&Object.keys(j.platforms).length) data=j; } }catch(e){}
+  if(!data){ try{ const r=await fetch('https://cdn.toolscomb.com/hot'); if(r.ok) data=await r.json(); }catch(e){} }
+  if(!data){ $('#hlState').textContent='获取失败'; $('#hlItems').innerHTML='<div class="tiny">热榜源都不可达。请确认本机 server.py 已运行（localhost 打开），或稍后重试。</div>'; return; }
+  hlData=data; buildPf(); renderHot(); loadTrend();
+  const n=Object.keys(data.platforms).filter(k=>(data.platforms[k].items||[]).length).length;
+  $('#hlState').textContent='更新于 '+new Date(data.updated).toLocaleTimeString()+' · '+n+' 个平台';
+}
+function buildPf(){
+  const pf=$('#hlPf'); pf.innerHTML='';
+  const keys=Object.keys(hlData.platforms).filter(k=>(hlData.platforms[k].items||[]).length);
+  if(hlCur!=='all' && !keys.includes(hlCur)) hlCur='all';
+  const mk=(id,label)=>{ const b=document.createElement('button'); b.textContent=label;
+    if(id===hlCur) b.classList.add('on');
+    b.onclick=()=>{ hlCur=id; buildPf(); renderHot(); }; pf.appendChild(b); };
+  mk('all','全部'); keys.forEach(k=>mk(k, HL_NAMES[k]||k));
+  const ai=document.createElement('button'); ai.textContent='🤖 AI 相关'; if(hlAI) ai.classList.add('on');
+  ai.style.marginLeft='auto'; ai.onclick=()=>{ hlAI=!hlAI; buildPf(); renderHot(); }; pf.appendChild(ai);
+}
+function renderHot(){
+  const box=$('#hlItems'); box.innerHTML='';
+  const plats = hlCur==='all' ? Object.keys(hlData.platforms) : [hlCur];
+  let rank=0;
+  const tm=hlTrendMap();
+  plats.forEach(k=>{ ((hlData.platforms[k].items)||[]).forEach((it,i)=>{
+    if(hlAI && !AIRE.test(it.title||'')) return;
+    const tr=tm[it.title];
+    if(hlTrendCat!=='all' && !(tr&&tr.trend===hlTrendCat)) return;
+    rank++;
+    const isAI=AIRE.test(it.title||'');
+    const d=document.createElement('div'); d.className='hl-item'+(i<3?' top':'');
+    d.innerHTML='<span class="rank">'+rank+'</span>'+
+      '<div style="flex:1;min-width:0"><a href="'+esc(it.url||'#')+'" target="_blank" rel="noopener" style="text-decoration:none;color:var(--ink);line-height:1.5">'+esc(it.title)+
+      (tr?' <span style="font-size:10.5px;border-radius:4px;padding:0 4px;white-space:nowrap;font-style:normal;'+trColor(tr.trend)+'">'+TREND_NAMES[tr.trend]+' '+tr.days+'天</span>':'')+
+      (isAI?' <span style="font-size:10.5px;background:var(--accent-soft);color:var(--accent-2);border-radius:4px;padding:0 4px;white-space:nowrap;font-style:normal">AI</span>':'')+'</a>'+
+      (it.desc?'<div class="tiny" style="color:var(--ink-3);margin-top:2px">'+esc(it.desc)+'</div>':'')+'</div>'+
+      (it.hot?'<span class="heat">'+esc(String(it.hot))+'</span>':'');
+    const add=document.createElement('button'); add.className='btn btn-soft btn-sm add'; add.textContent='＋';
+    add.onclick=()=>{ if(hlPick.find(p=>p.title===it.title)){ toast('已在选题清单'); return; }
+      hlPick.unshift({title:it.title, url:it.url, src:HL_NAMES[k]||k, at:Date.now()});
+      store.set('ct-hlpick',hlPick); renderPick(); toast('已加入选题','ok'); };
+    d.appendChild(add); box.appendChild(d);
+  }); });
+  if(!rank){ let msg=(hlAI?'当前没有匹配「AI」的条目，试试切回全部。':'该平台当前无数据（可能限流），试试「全部」。');
+    if(hlTrendCat!=='all') msg='当前筛选「'+TREND_NAMES[hlTrendCat]+'」没有条目，试试「全部」。';
+    $('#hlItems').innerHTML='<div class="tiny" style="color:var(--ink-3)">'+msg+'</div>'; }
+}
+function renderPick(){
+  $('#hlPickN').textContent=hlPick.length;
+  const list=$('#hlPickList'); list.innerHTML='';
+  if(!hlPick.length){ list.innerHTML='<div class="tiny" style="color:var(--ink-3)">还没有选题</div>'; return; }
+  hlPick.forEach((p,i)=>{ const d=document.createElement('div'); d.className='pick-item';
+    d.innerHTML='<span style="flex:1"><a href="'+esc(p.url||'#')+'" target="_blank" rel="noopener" style="text-decoration:none;color:var(--ink)">'+esc((p.src||'')+' · '+p.title)+'</a></span>';
+    const del=document.createElement('button'); del.className='del'; del.textContent='×';
+    del.onclick=()=>{ hlPick.splice(i,1); store.set('ct-hlpick',hlPick); renderPick(); }; d.appendChild(del); list.appendChild(d); });
+}
+$('#hlExport').onclick=()=>{ if(!hlPick.length) return toast('还没有选题','err');
+  const md='# 选题清单（'+new Date().toLocaleDateString()+'）\n\n'+hlPick.map(p=>'- [ ] **'+p.title+'**（'+p.src+'） — '+(p.url||'')).join('\n');
+  copyText(md).then(()=>toast('选题清单已复制为 Markdown','ok')); };
+$('#hlClear').onclick=()=>{ hlPick=[]; store.set('ct-hlpick',hlPick); renderPick(); toast('已清空'); };
+renderPick();
+
+/* ===================================================================
+   13 · 一键分发
+   =================================================================== */
+function pbTitle(){ const m=$('#pbSrc').value.match(/^#\s+(.+)$/m); return m?m[1].trim():'（未命名）'; }
+function pbPlain(){ const s=$('#pbSrc').value.replace(/^#\s+.+$/m,'').trim();
+  return md.render(s).replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').replace(/\n{3,}/g,'\n\n').trim(); }
+function pbCompose(plat, body){
+  const title=pbTitle(); const tags=($('#pbTags').value||'').split(/[,，\s]+/).filter(Boolean).map(t=>'#'+t.replace(/^#/,'')).join(' ');
+  const link=($('#pbLink').value||'').trim();
+  if(plat==='公众号') return {t:title, b:body, hint:'→ 复制到「公众号排版」生成样式后粘贴（工具05）'};
+  if(plat==='知乎') return {t:title, b:(tags?body+'\n\n'+tags+'\n\n'+link:body+'\n\n'+link).trim(), hint:'粘贴到知乎编辑器，标题 + 正文 + 话题'};
+  if(plat==='小红书') return {t:title.slice(0,20), b:(body+'\n\n'+tags+(link?'\n'+link:'')).trim(), hint:'封面用「封面生成」(工具06)，正文+标签粘贴'};
+  if(plat==='X'){ const main=(title+'\n\n'+body.slice(0,150)).trim(); const tail=(tags?tags+' ':'')+link; const full=(main+(tail?'\n\n'+tail:'')).trim();
+    return {t:title, b:full.length>280? (full.slice(0,277)+'…'):full, hint:'已压到 280 字内；超长建议单独发长文'}; }
+}
+function pbBlock(plat, label, tag){ return '<div style="border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-top:12px">'+
+  '<div class="row" style="justify-content:space-between"><b>'+label+'</b><button class="btn btn-soft btn-sm pb-copy" data-plat="'+plat+'">复制</button></div>'+
+  '<div class="tiny" style="margin:2px 0 6px">'+tag.hint+'</div>'+
+  '<div class="codebox" style="white-space:pre-wrap">'+esc(tag.b)+'</div></div>'; }
+$('#pbGo').onclick=()=>{ const body=pbPlain(); if(!body) return toast('请先填写正文','err');
+  let html='';
+  if($('#pbWx').checked) html+=pbBlock('公众号','公众号', pbCompose('公众号', body));
+  if($('#pbZh').checked) html+=pbBlock('知乎','知乎', pbCompose('知乎', body));
+  if($('#pbXhs').checked) html+=pbBlock('小红书','小红书', pbCompose('小红书', body));
+  if($('#pbX').checked) html+=pbBlock('X','X / Twitter', pbCompose('X', body));
+  if(!html) return toast('至少勾选一个平台','err');
+  $('#pbOut').innerHTML=html;
+  $$('#pbOut .pb-copy').forEach(b=>b.onclick=()=>{ const p=b.dataset.plat; const composed=composeFor(p); copyText(composed).then(()=>{ b.textContent='已复制 ✓'; toast(p+' 文案已复制','ok'); setTimeout(()=>b.textContent='复制',1200); }); });
+  toast('已生成分发清单','ok');
+};
+function composeFor(plat){ const body=pbPlain(); return pbCompose(plat, body).b; }
+$('#pbGo'); // keep hander bound
+
+/* ===================================================================
+   14 · AI 周报
+   =================================================================== */
+function isoWeek(){ const d=new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()+3-((d.getDay()+6)%7)); const w1=new Date(d.getFullYear(),0,4);
+  return d.getFullYear()+'-W'+String(1+Math.round(((d-w1)/864e5-3+((w1.getDay()+6)%7))/7)).padStart(2,'0'); }
+let aiwKey='ct-aiweek-'+isoWeek(), aiwData=store.get(aiwKey,{});
+function aiwSave(){ store.set(aiwKey, aiwData); }
+const AIW_SRC={github:'GitHub', hackernews:'HN', toutiao:'头条', bilibili:'B站', baidu:'百度', redfox:'抖音爆款'};
+function aiwInit(){ aiwData=store.get(aiwKey,{}); aiwGrab(); }
+async function aiwGrab(){
+  $('#aiwState').textContent='抓取中…';
+  let data=null;
+  try{ const r=await fetch('/api/hot'); if(r.ok){ const j=await r.json(); if(j&&j.platforms&&Object.keys(j.platforms).length) data=j; } }catch(e){}
+  if(!data){ try{ const r=await fetch('https://cdn.toolscomb.com/hot'); if(r.ok) data=await r.json(); }catch(e){} }
+  if(!data){ aiwData=store.get(aiwKey,{}); if(Object.keys(aiwData).length){ aiwRender(); $('#aiwState').textContent='获取失败（已显示本周 '+Object.keys(aiwData).length+' 条）'; }
+    else $('#aiwState').textContent='获取失败：请确认本机 server.py 已运行（localhost 打开），或稍后重试'; return; }
+  aiwData=store.get(aiwKey,{}); let added=0;
+  Object.keys(data.platforms).forEach(k=>{ ((data.platforms[k].items)||[]).forEach(it=>{
+    if(k!=='redfox' && !AIRE.test(it.title||'')) return;
+    if(aiwData[it.title]) return;
+    aiwData[it.title]={title:it.title, url:it.url||'#', src:k, hot:it.hot||'', desc:it.desc||'', at:Date.now(), pick:false}; added++;
+  }); });
+  aiwSave(); aiwRender();
+  $('#aiwState').textContent='本周累计 '+Object.keys(aiwData).length+' 条（本次新增 '+added+'）· '+isoWeek();
+}
+function aiwRender(){
+  const items=Object.values(aiwData).sort((a,b)=>b.at-a.at);
+  const box=$('#aiwList'); box.innerHTML='';
+  if(!items.length){ box.innerHTML='<div class="tiny" style="color:var(--ink-3)">本周还没有热点，点「抓取本周 AI 热点」开始。</div>'; $('#aiwState').textContent=isoWeek()+' · 0 条'; return; }
+  const groups=[['redfox','🔥 爆款·抖音（红狐）'],['github','GitHub AI 仓库'],['hackernews','Hacker News · AI/科技'],['cnn','国内 AI 热点（头条/百度/B站）']];
+  let total=0;
+  groups.forEach(([gk,label])=>{
+    let list=items.filter(i=>{ const s=AIW_SRC[i.src]||i.src; return gk==='cnn' ? !(i.src==='github'||i.src==='hackernews'||i.src==='redfox') : i.src===gk; });
+    if(gk==='redfox'){ list.sort((a,b)=>Number(b.hot||0)-Number(a.hot||0)); list=list.slice(0,12); }
+    if(!list.length) return;
+    const h=document.createElement('div'); h.className='aiw-group'; h.textContent=label+'（'+list.length+'）'; box.appendChild(h);
+    list.forEach(it=>{
+      total++;
+      const d=document.createElement('div'); d.className='aiw-item';
+      const src=AIW_SRC[it.src]||it.src;
+      d.innerHTML='<span class="star'+(it.pick?' on':'')+'" title="想写">'+(it.pick?'★':'☆')+'</span>'+
+        '<a href="'+esc(it.url)+'" target="_blank" rel="noopener">'+esc(it.title)+'</a>'+
+        '<span class="src">'+esc(src)+(it.hot?' · '+esc(String(it.hot)):'')+'</span>'+
+        '<button class="del" title="删除">×</button>';
+      d.querySelector('.star').onclick=()=>{ it.pick=!it.pick; aiwSave(); aiwRender(); };
+      d.querySelector('.del').onclick=()=>{ delete aiwData[it.title]; aiwSave(); aiwRender(); };
+      box.appendChild(d);
+    });
+  });
+  $('#aiwState').textContent=isoWeek()+' · 累计 '+items.length+' 条 · 想写 '+items.filter(i=>i.pick).length+' 条';
+}
+function aiwRange(){ const n=new Date(); const dow=(n.getDay()+6)%7; const m=new Date(n); m.setDate(n.getDate()-dow); const s=new Date(m); s.setDate(m.getDate()+6);
+  return m.toLocaleDateString('zh-CN')+' ~ '+s.toLocaleDateString('zh-CN'); }
+$('#aiwGrab').onclick=aiwGrab;
+$('#aiwExport').onclick=()=>{ const items=Object.values(aiwData); if(!items.length) return toast('本周还没有数据','err');
+  const picks=items.filter(i=>i.pick);
+  const sec=(label,list)=>list.length?('## '+label+'（'+list.length+'）\n'+list.map(i=>'- **'+i.title+'**'+(i.hot?' (`'+i.hot+'`)':'')+(i.url&&i.url!=='#'?' — '+i.url:'')).join('\n')+'\n\n'):'';
+  let md='# AI 周报（'+aiwRange()+'）\n\n> 本周 AI 热点累计 '+items.length+' 条 · 想写 '+picks.length+' 条\n\n';
+  if(picks.length) md+='## 🤖 想写选题池\n'+picks.map(i=>'- [ ] **'+i.title+'**（'+(AIW_SRC[i.src]||i.src)+'）'+(i.url&&i.url!=='#'?' — '+i.url:'')).join('\n')+'\n\n';
+  md+=sec('🔥 爆款·抖音（红狐）', items.filter(i=>i.src==='redfox').sort((a,b)=>Number(b.hot||0)-Number(a.hot||0)).slice(0,12));
+  md+=sec('GitHub AI 仓库', items.filter(i=>i.src==='github'));
+  md+=sec('Hacker News · AI/科技', items.filter(i=>i.src==='hackernews'));
+  md+=sec('国内 AI 热点（头条/百度/B站）', items.filter(i=>!(i.src==='github'||i.src==='hackernews'||i.src==='redfox')));
+  copyText(md).then(()=>toast('AI 周报已复制为 Markdown','ok')); };
+$('#aiwClear').onclick=()=>{ aiwData={}; aiwSave(); aiwRender(); toast('本周已清空'); };
+aiwRender();
+
+/* ===================================================================
+   copyHtml helper needs a Blob of the html; we pass html string
+   =================================================================== */
+function copyHtml(html){
+  const txt = new DOMParser().parseFromString(html,'text/html').body.textContent;
+  return navigator.clipboard.write([new ClipboardItem({
+    'text/html': new Blob([html],{type:'text/html'}),
+    'text/plain': new Blob([txt],{type:'text/plain'})
+  })]);
+}
+/* recompute wechat copy after that (capture latest html) */
+
+/* ===================================================================
+   热榜趋势 (增长/稳定/冷却/新上榜) — /api/trend
+   =================================================================== */
+let hlTrend=null, hlTrendCat='all', hlTrendDays=0;
+const TREND_NAMES={rising:'📈 增长', new:'🆕 新上榜', stable:'➖ 稳定', cooling:'📉 冷却'};
+function trColor(t){ return t==='rising'?'background:rgba(16,185,129,.15);color:#10b981'
+  : t==='new'?'background:rgba(59,130,246,.15);color:#3b82f6'
+  : t==='cooling'?'background:rgba(239,68,68,.13);color:#ef4444'
+  : 'background:rgba(100,116,139,.15);color:#64748b'; }
+function hlTrendMap(){ const m={}; if(!hlTrend) return m;
+  Object.values(hlTrend.platforms).forEach(items=>items.forEach(it=>{ if(it.title&&!m[it.title]) m[it.title]=it; })); return m; }
+async function loadTrend(){
+  try{ const r=await fetch('/api/trend?days=14'); if(r.ok){ const j=await r.json();
+    if(j&&j.platforms){ hlTrend=j; hlTrendDays=j.days||14; buildTrendbar(); renderHot(); } } }catch(e){}
+}
+function buildTrendbar(){
+  const bar=$('#hlTf'); if(!bar) return; bar.innerHTML='';
+  const hint=document.createElement('span'); hint.className='tiny'; hint.style.color='var(--ink-3)'; hint.style.marginRight='6px';
+  hint.textContent='🔥 趋势('+hlTrendDays+'天)'; bar.appendChild(hint);
+  const mk=(id,label)=>{ const b=document.createElement('button'); b.textContent=label;
+    if(id===hlTrendCat) b.classList.add('on');
+    b.onclick=()=>{ hlTrendCat=id; buildTrendbar(); renderHot(); }; bar.appendChild(b); };
+  mk('all','全部'); mk('rising','📈 增长'); mk('new','🆕 新上榜'); mk('stable','➖ 稳定'); mk('cooling','📉 冷却');
+  bar.style.display='block';
+}
+
+/* ===================================================================
+   AI 选题生成 — /api/ai_topics (local DeepSeek)
+   =================================================================== */
+function escA(s){ return esc(s).replace(/"/g,'&quot;'); }
+$('#setNiche').value=store.get('ct-niche','职场软技能、效率工具');
+$('#setNiche').oninput=()=>store.set('ct-niche',$('#setNiche').value);
+async function hlAiTopics(){
+  const btn=$('#hlAiGo'); btn.textContent='生成中…'; btn.disabled=true;
+  $('#hlAiOut').innerHTML='<div class="tiny">正在用本地 DeepSeek 结合今日热榜生成（约 1 分钟）…</div>';
+  const niche=($('#setNiche').value||'职场软技能、效率工具').trim();
+  try{
+    const r=await fetch('/api/ai_topics',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({niche})});
+    const j=await r.json();
+    if(!j.ok) throw new Error(j.error||'生成失败');
+    let html='';
+    (j.topics||[]).forEach((t,i)=>{
+      const fit=t.fit||'中'; const fc=(fit==='高')?'var(--accent-2)':'var(--ink-2)';
+      html+='<div style="display:flex;gap:8px;align-items:flex-start;padding:8px 2px;border-bottom:1px solid var(--line-2)">'
+        +'<span style="font-weight:700;color:var(--accent-2);flex:none">'+(i+1)+'</span>'
+        +'<div style="flex:1;min-width:0"><b>'+esc(t.title)+'</b> <span style="font-size:10.5px;color:'+fc+'">匹配·'+esc(fit)+'</span>'
+        +(t.angle?'<div class="tiny" style="color:var(--ink-3)">切入：'+esc(t.angle)+'</div>':'')
+        +(t.why?'<div class="tiny" style="color:var(--ink-3)">为什么：'+esc(t.why)+'</div>':'')+'</div>'
+        +'<div style="flex:none;display:flex;gap:6px"><button class="btn btn-soft btn-sm ai-add" data-title="'+escA(t.title)+'">＋选题</button><button class="btn btn-ghost btn-sm ai-kb" data-title="'+escA(t.title)+'" data-angle="'+escA(t.angle||'')+'" title="存进知识库">🕮</button></div></div>';
+    });
+    $('#hlAiOut').innerHTML=html;
+    $$('#hlAiOut .ai-add').forEach(b=>b.onclick=()=>hlPickAdd(b.dataset.title));
+    $$('#hlAiOut .ai-kb').forEach(b=>b.onclick=()=>kbAddTopicBtn(b.dataset.title, b.dataset.angle));
+    btn.textContent='再生成';
+  }catch(e){
+    const msg=/json|Unexpected end|Failed to fetch|NetworkError/i.test(e.message)
+      ? '本机服务未运行或当前在公开页（AI 选题需用 <b>localhost 打开</b> + 本机 server.py + 本地 DeepSeek key）。'
+      : (e.message||'生成失败');
+    $('#hlAiOut').innerHTML='<div class="tiny" style="color:#ef4444">'+msg+'</div>';
+    btn.textContent='生成';
+  }
+  btn.disabled=false;
+}
+$('#hlAiGo').onclick=hlAiTopics;
+function hlPickAdd(title){ if(hlPick.find(p=>p.title===title)){ toast('已在选题清单'); return; }
+  hlPick.unshift({title, url:'', src:'AI选题', at:Date.now()}); store.set('ct-hlpick',hlPick); renderPick(); toast('已加入选题','ok'); }
+
+/* ===================================================================
+   15 · 违禁词检测
+   =================================================================== */
+const BWN={ad:'广告法极限词', sens:'敏感/违禁', med:'医疗夸大', drain:'引流/营销违规', plat:'平台违规'};
+const BW_BASE={
+  ad:['最佳','最好','最大','最优','最高','最低','最省','最先进','最便宜','第一','世界级','国家级','顶级','极致','绝无仅有','独一无二','巅峰','至尊','极品','纯天然','绝对','万能','全网第一','销量第一','第一品牌','领导品牌','首家','唯一','顶尖','全球首发','史上最低','史上最强','冠军','无法超越','无与伦比','效果奇佳','一劳永逸'],
+  sens:['赌博','博彩','色情','裸聊','毒品','冰毒','大麻','枪支','手枪','恐怖袭击','邪教','迷信','封建迷信','法轮','翻墙','VPN','假药','假货','刷单','套现','洗钱'],
+  med:['治愈','根治','包治','特效','神药','抗癌','防癌','无副作用','延年益寿','壮阳','降血压','降血糖','减肥不反弹','美白祛斑','祛除皱纹','抗菌消炎','抗病毒','修复受损','排毒','养生'],
+  drain:['加我微信','私信我','私聊我','评论区扣','转账','付款','支付宝','代购','微商','代理','加盟','兼职','日结','躺赚','稳赚','零风险','保本','高收益','内幕消息','带你','跟单','稳赚不赔','月入过万','免费领','仅限今天','马上抢','限时','橱窗','小黄车','直播间','主页','上车','私我','加群','扣1','扣666','关注+'],
+  plat:['低俗','暴力','血腥','恐怖','淫秽','诈骗','帮信','洗钱','虚假宣传','诱导消费','标题党','震惊','震惊了','不转不是中国人','站外','telegram','whatsapp','引流','软广','诱导关注']
+};
+function bwWords(strict){ const w={}; const add=(arr,cat)=>arr.forEach(x=>{ if(x.length>=2 && !w[x]) w[x]=cat; });
+  add(BW_BASE.ad,'ad'); add(BW_BASE.sens,'sens'); add(BW_BASE.med,'med'); add(BW_BASE.drain,'drain'); add(BW_BASE.plat,'plat');
+  if(strict){ add(['客服','咨询','详情','购买','下单','链接','官网','店铺','互关','互粉','求关注'],'plat'); }
+  return w; }
+let bwMasked='';
+function bwCheck(){
+  const src=$('#bwSrc').value;
+  if(!src.trim()){ toast('请先粘贴文本','err'); return; }
+  const words=bwWords($('#bwStrict').checked);
+  const result=[]; let count=0;
+  Object.keys(words).sort((a,b)=>b.length-a.length).forEach(w=>{
+    const p=src.indexOf(w); if(p<0) return;
+    const occ=[]; let idx=0;
+    while(idx<src.length){ const k=src.indexOf(w,idx); if(k<0) break; occ.push(k); idx=k+w.length; }
+    result.push({w, cat:words[w], occ}); count+=occ.length;
+  });
+  if(!count){ $('#bwState').textContent='未发现违禁词 ✓ (严苛:'+($('#bwStrict').checked?'开':'关')+')';
+    $('#bwOut').innerHTML='<div class="tiny" style="color:#10b981">没有命中违禁词，可放心发布。</div>'; bwMasked=''; return; }
+  result.sort((a,b)=>a.occ[0]-b.occ[0]);
+  let masked=src;
+  result.forEach(r=>{ masked=masked.split(r.w).join('*'.repeat(r.w.length)); });
+  bwMasked=masked;
+  $('#bwState').textContent='命中 '+count+' 处 · '+result.length+' 个词 (严苛:'+($('#bwStrict').checked?'开':'关')+')';
+  let html='<div class="tiny" style="color:#ef4444;margin-bottom:8px">命中 '+count+' 处，尝试替换为 * ：</div>';
+  result.forEach(r=>{ html+='<div style="margin:3px 0"><span style="font-size:11px;background:rgba(239,68,68,.12);color:#ef4444;border-radius:4px;padding:1px 6px;margin-right:6px">'+BWN[r.cat]+'</span><b style="color:#ef4444">'+esc(r.w)+'</b><span class="tiny" style="color:var(--ink-3);margin-left:6px">×'+r.occ.length+'</span></div>'; });
+  $('#bwOut').innerHTML=html;
+}
+$('#bwGo').onclick=bwCheck;
+$('#bwCopy').onclick=()=>{ if(!bwMasked) return toast('先检测并命中违禁词后才可复制','err');
+  copyText(bwMasked).then(()=>toast('已复制清洗版（命中词替换为 *）','ok')); };
+async function bwRedfoxScan(){
+  const btn=$('#bwRedfox'); btn.textContent='扫描中…'; btn.disabled=true;
+  $('#bwState').textContent='拉取抖音爆款…';
+  let items=[];
+  try{ const r=await fetch('/api/hot'); const j=await r.json(); items=(j.platforms.redfox&&j.platforms.redfox.items)||[]; }catch(e){}
+  if(!items.length){ $('#bwOut').innerHTML='<div class="tiny" style="color:var(--ink-3)">红狐·抖音爆款暂无数据（需本机 server.py + 红狐 key，localhost 打开）。</div>';
+    $('#bwState').textContent='扫描失败/空'; btn.textContent='🔥 抖音爆款扫描'; btn.disabled=false; return; }
+  const words=bwWords($('#bwStrict').checked);
+  const risky=[], clean=[];
+  items.forEach(it=>{
+    const text=((it.title||'')+' '+(it.desc||'')).toLowerCase();
+    const hits=[];
+    Object.keys(words).forEach(w=>{ if(w.length>=2 && text.includes(w.toLowerCase()) && !hits.includes(w)) hits.push(w); });
+    (hits.length?risky:clean).push({title:it.title, hits, hot:it.hot});
+  });
+  let html='';
+  if(!risky.length){ html='<div class="tiny" style="color:#10b981">扫描 '+items.length+' 条抖音爆款，未发现引流/违规词 ✓</div>'; }
+  else{
+    html='<div class="tiny" style="color:#ef4444;margin-bottom:6px">'+risky.length+'/'+items.length+' 条抖音爆款含风险钩子（引流/违规）：</div>';
+    risky.forEach(r=>{ html+='<div style="margin:4px 0;border-left:3px solid #ef4444;padding:3px 8px">'
+      +'<div style="font-size:12.5px;font-weight:600">'+esc(r.title.slice(0,42))+'<span class="tiny" style="color:var(--ink-3);font-weight:400">'+(r.hot?' · '+r.hot:'')+'</span></div>'
+      +'<div class="tiny" style="color:#ef4444">⚠ '+r.hits.map(h=>BWN[words[h]]+'·'+esc(h)).join('，')+'</div></div>'; });
+  }
+  $('#bwOut').innerHTML=html;
+  $('#bwState').textContent='扫描 '+items.length+' 条 · 风险 '+risky.length+' 条';
+  btn.textContent='🔥 抖音爆款扫描'; btn.disabled=false;
+}
+$('#bwRedfox').onclick=bwRedfoxScan;
+
+/* ===================================================================
+   16 · 本地知识库 (markdown files via /api/kb, localhost-only)
+   =================================================================== */
+let kbItems=[], kbCur=null, kbType='';
+const KBT={选题:['#10b981','rgba(16,185,129,.15)'],成稿:['#3b82f6','rgba(59,130,246,.15)'],拆书:['#8b5cf6','rgba(139,92,246,.15)'],素材:['#f59e0b','rgba(245,158,11,.15)']};
+$('#setKbTarget').value=store.get('ct-kbtarget','/Users/zhangyang/BlinkLLMWiki-Release-v1.0/ContentKB');
+$('#setKbTarget').oninput=()=>store.set('ct-kbtarget',$('#setKbTarget').value);
+async function kbLoad(){
+  kbType='';
+  try{ const r=await fetch('/api/kb'); const j=await r.json(); kbItems=j.items||[]; kbRenderList();
+    $('#kbState').textContent='共 '+kbItems.length+' 条'; }catch(e){ $('#kbState').textContent='获取失败：需本机 server.py（localhost 打开）'; }
+}
+function kbRenderList(items){
+  items=items||kbItems;
+  const flt=$('#kbFilter'); flt.innerHTML='';
+  ['','选题','成稿','拆书','素材'].forEach(c=>{ const b=document.createElement('button'); b.textContent=c||'全部';
+    if((c||'')===kbType) b.classList.add('on');
+    b.onclick=()=>{ kbType=c||''; kbRenderList(); }; flt.appendChild(b); });
+  const list=$('#kbList'); list.innerHTML='';
+  const shown=items.filter(i=>!kbType||i.type===kbType);
+  if(!shown.length){ list.innerHTML='<div class="tiny" style="color:var(--ink-3)">'+(kbType?'该类型暂无条目':'还没有条目')+'</div>'; return; }
+  shown.forEach(i=>{
+    const d=document.createElement('div'); d.className='kb-item'+(i.id===kbCur?' on':'');
+    const k=KBT[i.type]||['var(--ink-2)','rgba(100,116,139,.15)'];
+    d.innerHTML='<span class="kb-type" style="color:'+k[0]+';background:'+k[1]+'">'+esc(i.type)+'</span>'
+      +'<div style="flex:1;min-width:0"><b>'+esc(i.title)+'</b>'
+      +(i.tags.length?'<div class="meta">'+esc(i.tags.join(' · '))+'</div>':'')
+      +'<div class="meta">'+esc(i.updated||i.date||'')+(i.source?' · '+esc(i.source):'')+'</div></div>';
+    d.onclick=()=>kbOpen(i.id); list.appendChild(d);
+  });
+}
+async function kbOpen(id){
+  try{ const r=await fetch('/api/kb?id='+encodeURIComponent(id)); const j=await r.json(); if(!j.ok) return;
+    kbCur=j.id; $('#kbEdId').textContent='#'+j.id.slice(0,8);
+    $('#kbT').value=j.meta.title||''; $('#kbType').value=j.meta.type||'素材';
+    $('#kbTags').value=(j.meta.tags||'').split(/[，,]/).join(',');
+    $('#kbSrc').value=j.meta.source||''; $('#kbDate').value=j.meta.date||''; $('#kbBody').value=j.content||'';
+    kbRenderList(); }catch(e){}
+}
+function kbNew(){
+  kbCur=null; $('#kbEdId').textContent='';
+  const ds=new Date(); const dstr=ds.getFullYear()+'-'+String(ds.getMonth()+1).padStart(2,'0')+'-'+String(ds.getDate()).padStart(2,'0');
+  $('#kbT').value=''; $('#kbType').value='选题'; $('#kbTags').value=''; $('#kbSrc').value=''; $('#kbDate').value=dstr; $('#kbBody').value='';
+  kbRenderList(); $('#kbT').focus();
+}
+async function kbSave(){
+  const title=$('#kbT').value.trim(); if(!title) return toast('请填标题','err');
+  const tags=($('#kbTags').value||'').split(/[,，\s]+/).filter(Boolean);
+  const body={id:kbCur||'', title, type:$('#kbType').value, tags, source:$('#kbSrc').value.trim(), date:$('#kbDate').value, content:$('#kbBody').value};
+  try{ const r=await fetch('/api/kb',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); const j=await r.json();
+    if(!j.ok) throw new Error(j.error||'保存失败');
+    kbCur=j.id; await kbLoad(); toast('已保存到知识库','ok'); }catch(e){ toast(e.message||'保存失败','err'); }
+}
+async function kbDelete(){
+  if(!kbCur) return; if(!confirm('确定删除这条？')) return;
+  try{ await fetch('/api/kb?id='+encodeURIComponent(kbCur),{method:'DELETE'}); kbCur=null; kbNew(); await kbLoad(); toast('已删除','ok'); }catch(e){}
+}
+async function kbSearch(){
+  const q=$('#kbQ').value.trim();
+  if(!q){ kbLoad(); return; }
+  try{ const r=await fetch('/api/kb/search?q='+encodeURIComponent(q)); const j=await r.json();
+    kbRenderList(j.items||[]); $('#kbState').textContent='搜索「'+q+'」 '+((j.items||[]).length)+' 条'; }catch(e){}
+}
+async function kbExport(){
+  const target=$('#setKbTarget').value.trim()||'/Users/zhangyang/BlinkLLMWiki-Release-v1.0/ContentKB';
+  $('#kbState').textContent='导出中…';
+  try{ const r=await fetch('/api/kb/export',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({target})}); const j=await r.json();
+    if(!j.ok) throw new Error(j.error||'导出失败');
+    $('#kbState').textContent='已导出 '+j.count+' 条 → '+j.target;
+    toast('已导出 '+j.count+' 条到 '+target.split('/').pop(),'ok'); }catch(e){ $('#kbState').textContent='导出失败'; toast(e.message||'导出失败','err'); }
+}
+async function kbAdd(type,title,content,source){
+  try{ const r=await fetch('/api/kb',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,type,content,source})}); const j=await r.json();
+    if(!j.ok) throw new Error(j.error||'失败');
+    toast('已存进知识库','ok'); if($('#kbQ')) kbLoad(); }catch(e){ toast(e.message||'存库失败','err'); }
+}
+$('#kbNew').onclick=kbNew;
+$('#kbSaveBtn').onclick=kbSave;
+$('#kbDelBtn').onclick=kbDelete;
+$('#kbObsidian').onclick=kbExport;
+$('#kbQ').addEventListener('input',()=>{ clearTimeout(window.__kbT); window.__kbT=setTimeout(kbSearch,300); });
+
+/* —— 集成：热榜选题「存清单到知识库」 —— */
+async function kbSavePick(){
+  if(!hlPick.length) return toast('选题清单还没有内容','err');
+  let n=0;
+  for(const p of hlPick){ await kbAdd('选题', p.title, '来源：'+p.src, p.src); n++; }
+  toast(n+' 条选题已存进知识库','ok');
+}
+$('#hlKbSave').onclick=kbSavePick;
+/* —— 集成：一键分发「存成稿到知识库」 —— */
+$('#pbKbSave').onclick=()=>{ const src=$('#pbSrc').value; if(!src.trim()) return toast('请先填原文','err');
+  kbAdd('成稿', pbTitle(), src, '一键分发'); };
+/* —— 集成：AI 选题「存库」按钮渲染回调已用 ai-add；此处给每条补「🕮」—— */
+function kbAddTopicBtn(title, angle){ kbAdd('选题', title, angle?'切入：'+angle:'', 'AI选题'); }
+</script>
+</body>
+</html>
